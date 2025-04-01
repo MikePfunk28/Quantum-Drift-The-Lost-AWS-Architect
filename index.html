@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quantum Drift: The Lost AWS Architect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      @keyframes terminalGlow {
+        0% {
+          text-shadow: 0 0 5px #10b981;
+        }
+        50% {
+          text-shadow: 0 0 15px #10b981;
+        }
+        100% {
+          text-shadow: 0 0 5px #10b981;
+        }
+      }
+      @keyframes serverPulse {
+        0% {
+          transform: scale(1);
+          opacity: 0.7;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 0.7;
+        }
+      }
+      @keyframes hackEffect {
+        0% {
+          filter: hue-rotate(0deg);
+        }
+        100% {
+          filter: hue-rotate(360deg);
+        }
+      }
+      .terminal-text {
+        font-family: "Courier New", monospace;
+        animation: terminalGlow 2s infinite;
+      }
+      .server-node {
+        animation: serverPulse 3s infinite;
+      }
+      .hacking {
+        animation: hackEffect 0.5s linear infinite;
+      }
+      .world-map path {
+        transition: all 0.3s ease;
+        fill: #374151;
+        stroke: #6b7280;
+      }
+      .world-map path:hover {
+        fill: #10b981;
+        cursor: pointer;
+      }
+      .world-map path.visited {
+        fill: #3b82f6;
+      }
+      .world-map path.current {
+        fill: #ef4444;
+      }
+      .fps-target {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #ef4444;
+        position: absolute;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        transition: transform 0.1s;
+      }
+      .fps-target:hover {
+        transform: scale(1.2);
+      }
+      .health-bar {
+        transition: width 0.5s ease;
+      }
+      .inventory-item {
+        transition: all 0.2s ease;
+      }
+      .inventory-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .modal-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+      }
+      .typewriter {
+        overflow: hidden;
+        border-right: 0.15em solid #10b981;
+        white-space: nowrap;
+        letter-spacing: 0.15em;
+      }
+      .pixelated {
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+    <!-- Game Container -->
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 p-4">
+      <!-- Left Panel - Player Stats -->
+      <div
+        class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-1 order-2 lg:order-1"
+      >
+        <div class="mb-6">
+          <h2 class="text-xl font-bold mb-2 flex items-center">
+            <i class="fas fa-user-secret mr-2 text-green-400"></i>
+            AGENT PROFILE
+          </h2>
+          <div class="bg-gray-700 rounded p-3 mb-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-sm text-gray-300">Level</span>
+              <span id="player-level" class="font-bold">1</span>
+            </div>
+            <div class="w-full bg-gray-600 rounded-full h-2 mb-3">
+              <div
+                id="player-xp-bar"
+                class="bg-green-500 h-2 rounded-full"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+          <div class="bg-gray-700 rounded p-3 mb-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-sm text-gray-300">Health</span>
+              <span id="player-health-text" class="font-bold">100/100</span>
+            </div>
+            <div class="w-full bg-gray-600 rounded-full h-2">
+              <div
+                id="player-health-bar"
+                class="bg-red-500 health-bar h-2 rounded-full"
+                style="width: 100%"
+              ></div>
+            </div>
+          </div>
+          <div class="bg-gray-700 rounded p-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-sm text-gray-300">Credits</span>
+              <span id="player-credits" class="font-bold">500</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-300">AWS Certs</span>
+              <span id="player-certs" class="font-bold">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <h2 class="text-xl font-bold mb-2 flex items-center">
+            <i class="fas fa-server mr-2 text-blue-400"></i>
+            AWS DEPLOYMENT
+          </h2>
+          <div id="server-status" class="bg-gray-700 rounded p-3 mb-3">
+            <div class="flex items-center mb-2">
+              <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+              <span class="text-sm">No active infrastructure</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-gray-800 rounded p-2 flex items-center">
+                <i class="fas fa-shield-alt mr-1 text-yellow-400"></i>
+                <span>Security: <span id="security-level">0</span></span>
+              </div>
+              <div class="bg-gray-800 rounded p-2 flex items-center">
+                <i class="fas fa-tachometer-alt mr-1 text-green-400"></i>
+                <span>Performance: <span id="performance-level">0</span></span>
+              </div>
+              <div class="bg-gray-800 rounded p-2 flex items-center">
+                <i class="fas fa-bolt mr-1 text-purple-400"></i>
+                <span>Scalability: <span id="scalability-level">0</span></span>
+              </div>
+              <div class="bg-gray-800 rounded p-2 flex items-center">
+                <i class="fas fa-dollar-sign mr-1 text-blue-400"></i>
+                <span>Cost Opt: <span id="cost-level">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xl font-bold mb-2 flex items-center">
+            <i class="fas fa-briefcase mr-2 text-yellow-400"></i>
+            INVENTORY
+          </h2>
+          <div id="inventory" class="grid grid-cols-3 gap-2">
+            <!-- Items will be added here dynamically -->
+            <div
+              class="bg-gray-700 rounded p-2 text-center inventory-item"
+              title="EC2 Instance\nBasic compute resource"
+            >
+              <i class="fas fa-server text-blue-400 mb-1"></i>
+              <div class="text-xs">EC2 x<span>1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Panel - Game World -->
+      <div
+        class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-2 order-1 lg:order-2 relative overflow-hidden"
+      >
+        <div id="game-phase" class="hidden"></div>
+
+        <!-- World Map View -->
+        <div id="world-map-view" class="h-full">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold flex items-center">
+              <i class="fas fa-globe-americas mr-2 text-green-400"></i>
+              GLOBAL SERVER NETWORK
+            </h2>
+            <div id="game-clock" class="bg-gray-700 px-3 py-1 rounded text-sm">
+              Day 1, 08:00 UTC
+            </div>
+          </div>
+
+          <div class="relative h-96">
+            <svg
+              id="world-map"
+              class="w-full h-full"
+              viewBox="0 0 800 450"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <!-- Simplified world map with major AWS regions -->
+              <path
+                id="n-virginia"
+                data-region="us-east-1"
+                d="M220,150C230,140 250,130 270,140C290,150 300,170 290,190C280,210 260,220 240,210C220,200 210,180 220,160Z"
+              />
+              <path
+                id="ohio"
+                data-region="us-east-2"
+                d="M200,160C210,150 230,140 240,150C250,160 250,180 240,190C230,200 210,200 200,190C190,180 190,170 200,160Z"
+              />
+              <path
+                id="oregon"
+                data-region="us-west-2"
+                d="M120,150C130,140 150,130 170,140C190,150 190,170 180,190C170,210 150,210 130,200C120,190 110,170 120,150Z"
+              />
+              <path
+                id="ireland"
+                data-region="eu-west-1"
+                d="M440,120C450,110 470,110 480,120C490,130 490,150 480,160C470,170 450,170 440,160C430,150 430,130 440,120Z"
+              />
+              <path
+                id="frankfurt"
+                data-region="eu-central-1"
+                d="M470,150C480,140 500,140 510,150C520,160 520,180 510,190C500,200 480,200 470,190C460,180 460,160 470,150Z"
+              />
+              <path
+                id="tokyo"
+                data-region="ap-northeast-1"
+                d="M680,180C690,170 710,170 720,180C730,190 730,210 720,220C710,230 690,230 680,220C670,210 670,190 680,180Z"
+              />
+              <path
+                id="singapore"
+                data-region="ap-southeast-1"
+                d="M650,250C660,240 680,240 690,250C700,260 700,280 690,290C680,300 660,300 650,290C640,280 640,260 650,250Z"
+              />
+              <path
+                id="sydney"
+                data-region="ap-southeast-2"
+                d="M700,300C710,290 730,290 740,300C750,310 750,330 740,340C730,350 710,350 700,340C690,330 690,310 700,300Z"
+              />
+              <path
+                id="saopaulo"
+                data-region="sa-east-1"
+                d="M270,250C280,240 300,240 310,250C320,260 320,280 310,290C300,300 280,300 270,290C260,280 260,260 270,250Z"
+              />
+            </svg>
+            <div
+              id="current-location"
+              class="absolute top-4 left-4 bg-gray-900 bg-opacity-80 px-3 py-1 rounded text-sm"
+            >
+              Current Location: <span>Offline</span>
+            </div>
+          </div>
+
+          <div id="location-controls" class="mt-4 flex justify-between hidden">
+            <button
+              id="travel-btn"
+              class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center"
+            >
+              <i class="fas fa-plane-departure mr-2"></i> Deploy to Region
+            </button>
+            <button
+              id="investigate-btn"
+              class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded flex items-center"
+            >
+              <i class="fas fa-search mr-2"></i> Investigate
+            </button>
+          </div>
+        </div>
+
+        <!-- FPS View -->
+        <div id="fps-view" class="hidden h-full relative">
+          <div
+            class="absolute top-0 left-0 right-0 bg-gray-900 bg-opacity-80 p-2 flex justify-between"
+          >
+            <div id="hack-progress" class="w-full bg-gray-700 rounded h-4 mr-2">
+              <div
+                id="hack-progress-bar"
+                class="bg-green-500 h-4 rounded"
+                style="width: 0%"
+              ></div>
+            </div>
+            <div
+              id="hack-timer"
+              class="bg-red-600 text-white px-2 py-1 rounded text-sm"
+            >
+              30s
+            </div>
+          </div>
+          <div id="fps-targets" class="absolute inset-0">
+            <!-- Targets will be added here dynamically -->
+          </div>
+          <div
+            id="terminal-screen"
+            class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-90 text-green-400 font-mono p-4 hidden overflow-y-auto"
+            style="max-height: 200px"
+          >
+            <!-- Terminal output will appear here -->
+          </div>
+        </div>
+
+        <!-- Oregon Trail-style Event View -->
+        <div
+          id="event-view"
+          class="hidden h-full text-center flex flex-col items-center justify-center"
+        >
+          <div
+            id="event-image"
+            class="w-32 h-32 bg-gray-700 rounded-full mb-4 flex items-center justify-center"
+          >
+            <i class="fas fa-exclamation-triangle text-4xl text-yellow-400"></i>
+          </div>
+          <h3 id="event-title" class="text-xl font-bold mb-2">Event Title</h3>
+          <p id="event-description" class="mb-6 max-w-md">
+            Event description goes here...
+          </p>
+          <div
+            id="event-choices"
+            class="grid grid-cols-2 gap-3 w-full max-w-md"
+          >
+            <!-- Choices will be added here dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - Console and Clues -->
+      <div class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-1 order-3">
+        <div class="mb-6">
+          <h2 class="text-xl font-bold mb-2 flex items-center">
+            <i class="fas fa-terminal mr-2 text-green-400"></i>
+            QUANTUM CONSOLE
+          </h2>
+          <div
+            id="console"
+            class="bg-black text-green-400 font-mono p-3 rounded h-40 overflow-y-auto mb-2"
+          >
+            <div>> Booting Quantum Drift v2.3.7...</div>
+            <div>> Establishing secure connection to AWS backbone...</div>
+            <div>
+              > Authentication: <span class="text-white">AGENT_███████</span>
+            </div>
+            <div>> Welcome back, Agent. Systems nominal.</div>
+            <div>> Last login: 47 minutes ago from unidentified terminal</div>
+          </div>
+          <div class="flex">
+            <input
+              type="text"
+              id="console-input"
+              class="flex-1 bg-gray-700 border border-gray-600 rounded-l px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-500"
+              placeholder="Enter command..."
+            />
+            <button
+              title="Submit Command"
+              id="console-submit"
+              class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-r"
+            >
+              <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xl font-bold mb-2 flex items-center">
+            <i class="fas fa-clipboard-list mr-2 text-blue-400"></i>
+            CASE FILES
+          </h2>
+          <div id="case-files" class="bg-gray-700 rounded p-3">
+            <div class="mb-4">
+              <h3 class="font-bold text-green-400 mb-1">PRIMARY OBJECTIVE</h3>
+              <p class="text-sm">
+                Locate the missing AWS Architect Dr. ███████ who disappeared
+                while investigating irregularities in global cloud
+                infrastructure.
+              </p>
+            </div>
+            <div class="mb-4">
+              <h3 class="font-bold text-yellow-400 mb-1">
+                LAST KNOWN COORDINATES
+              </h3>
+              <p class="text-sm" id="last-coordinates">
+                Unknown - begin investigation in AWS regions
+              </p>
+            </div>
+            <div>
+              <h3 class="font-bold text-red-400 mb-1">CURRENT LEAD</h3>
+              <p class="text-sm" id="current-lead">
+                No active leads - search for clues
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <h2 class="text-xl font-bold mb-2 flex items-center">
+            <i class="fas fa-laptop-code mr-2 text-purple-400"></i>
+            AWS SERVICES
+          </h2>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              class="service-btn bg-blue-700 hover:bg-blue-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="ec2"
+            >
+              <i class="fas fa-server mb-1"></i>
+              <span class="text-xs">EC2</span>
+            </button>
+            <button
+              class="service-btn bg-yellow-700 hover:bg-yellow-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="s3"
+            >
+              <i class="fas fa-database mb-1"></i>
+              <span class="text-xs">S3</span>
+            </button>
+            <button
+              class="service-btn bg-green-700 hover:bg-green-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="lambda"
+            >
+              <i class="fas fa-bolt mb-1"></i>
+              <span class="text-xs">Lambda</span>
+            </button>
+            <button
+              class="service-btn bg-red-700 hover:bg-red-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="rds"
+            >
+              <i class="fas fa-table mb-1"></i>
+              <span class="text-xs">RDS</span>
+            </button>
+            <button
+              class="service-btn bg-purple-700 hover:bg-purple-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="cloudfront"
+            >
+              <i class="fas fa-network-wired mb-1"></i>
+              <span class="text-xs">CloudFront</span>
+            </button>
+            <button
+              class="service-btn bg-pink-700 hover:bg-pink-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="dynamodb"
+            >
+              <i class="fas fa-list-alt mb-1"></i>
+              <span class="text-xs">DynamoDB</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Windows -->
+    <div
+      id="start-modal"
+      class="modal-overlay fixed inset-0 flex items-center justify-center z-50"
+    >
+      <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6">
+        <div class="text-center mb-6">
+          <h1 class="text-3xl font-bold text-green-400 mb-2">QUANTUM DRIFT</h1>
+          <p class="text-xl">The Lost AWS Architect</p>
+        </div>
+
+        <div
+          class="bg-black p-4 rounded mb-6 h-64 overflow-y-auto terminal-text"
+        >
+          <div class="mb-2">> SYSTEM INITIALIZATION SEQUENCE</div>
+          <div class="mb-2">> Quantum encryption keys verified</div>
+          <div class="mb-2">> Loading neural interface protocols...</div>
+          <div class="mb-2">> Connecting to AWS Global Network</div>
+          <div class="mb-4">> Secure channel established</div>
+
+          <div
+            class="typewriter"
+            id="mission-briefing"
+            style="width: 0; animation: none"
+          ></div>
+        </div>
+
+        <div class="flex justify-center">
+          <button
+            id="start-game-btn"
+            class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold"
+          >
+            ACCEPT MISSION
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="aws-doc-modal"
+      class="modal-overlay fixed inset-0 flex items-center justify-center z-50 hidden"
+    >
+      <div
+        class="bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-screen overflow-y-auto"
+      >
+        <div class="flex justify-between items-center mb-4">
+          <h2 id="aws-doc-title" class="text-2xl font-bold"></h2>
+          <button id="close-aws-doc" class="text-gray-400 hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="aws-doc-content" class="prose prose-invert max-w-none">
+          <!-- AWS documentation will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Game State
+      const gameState = {
+        phase: "start", // start, world, fps, event
+        player: {
+          name: "AGENT_███████",
+          level: 1,
+          xp: 0,
+          health: 100,
+          maxHealth: 100,
+          credits: 500,
+          certs: 0,
+          location: null,
+          visitedRegions: [],
+          resources: {
+            ec2: 1,
+            s3: 0,
+            lambda: 0,
+            rds: 0,
+            cloudfront: 0,
+            dynamodb: 0,
+          },
+          deployedServices: [],
+        },
+        case: {
+          objective:
+            "Locate the missing AWS Architect Dr. ███████ who disappeared while investigating irregularities in global cloud infrastructure.",
+          lastCoordinates: "Unknown - begin investigation in AWS regions",
+          currentLead: "No active leads - search for clues",
+          clues: [],
+          targetRegion: null,
+          daysElapsed: 0,
+          gameTime: 0,
+        },
+        currentEvent: null,
+        fpsGame: {
+          active: false,
+          targets: [],
+          score: 0,
+          timeLeft: 30,
+          interval: null,
+          difficulty: 1,
+          serviceBeingHacked: null,
+        },
+        terminal: {
+          history: [],
+          commands: [
+            "help",
+            "status",
+            "deploy",
+            "scan",
+            "investigate",
+            "travel",
+          ],
+        },
+      };
+
+      // AWS Services Data
+      const awsServices = {
+        ec2: {
+          name: "Amazon EC2",
+          description:
+            "Elastic Compute Cloud provides scalable computing capacity in the AWS cloud.",
+          use: "Host your applications and workloads on virtual servers.",
+          security: 2,
+          performance: 3,
+          scalability: 4,
+          cost: 3,
+          price: 100,
+        },
+        s3: {
+          name: "Amazon S3",
+          description:
+            "Simple Storage Service offers industry-leading scalability, data availability, security, and performance.",
+          use: "Store and retrieve any amount of data from anywhere on the web.",
+          security: 4,
+          performance: 3,
+          scalability: 5,
+          cost: 1,
+          price: 50,
+        },
+        lambda: {
+          name: "AWS Lambda",
+          description:
+            "Run code without provisioning or managing servers. You pay only for the compute time you consume.",
+          use: "Run backend code in response to events or HTTP requests.",
+          security: 3,
+          performance: 2,
+          scalability: 5,
+          cost: 2,
+          price: 150,
+        },
+        rds: {
+          name: "Amazon RDS",
+          description:
+            "Relational Database Service makes it easy to set up, operate, and scale a relational database in the cloud.",
+          use: "Managed relational database service for MySQL, PostgreSQL, etc.",
+          security: 4,
+          performance: 4,
+          scalability: 3,
+          cost: 4,
+          price: 200,
+        },
+        cloudfront: {
+          name: "Amazon CloudFront",
+          description:
+            "Content delivery network (CDN) service that delivers data, videos, applications, and APIs to users globally.",
+          use: "Distribute content globally with low latency and high transfer speeds.",
+          security: 3,
+          performance: 5,
+          scalability: 5,
+          cost: 3,
+          price: 175,
+        },
+        dynamodb: {
+          name: "Amazon DynamoDB",
+          description:
+            "Fully managed NoSQL database service that provides fast and predictable performance with seamless scalability.",
+          use: "Managed NoSQL database for applications that need consistent, single-digit millisecond latency.",
+          security: 3,
+          performance: 5,
+          scalability: 5,
+          cost: 3,
+          price: 180,
+        },
+      };
+
+      // AWS Regions
+      const awsRegions = {
+        "us-east-1": {
+          name: "US East (N. Virginia)",
+          description: "The first AWS region, home to many major services.",
+          color: "#3B82F6",
+          events: [
+            "The logs show unusual API calls to EC2 instances around the time of Dr. ███████'s disappearance.",
+            "AWS Support reports abnormal latency spikes in this region during the investigation period.",
+          ],
+          secret:
+            "Hidden in plain sight - check the logs for 'overwatch' entries.",
+        },
+        "us-east-2": {
+          name: "US East (Ohio)",
+          description:
+            "A newer US region with lower latency for midwestern customers.",
+          color: "#3B82F6",
+          events: [
+            "An EC2 instance tagged with 'RESEARCH' was terminated abruptly 36 hours after deployment.",
+            "CloudTrail shows unauthorized access attempts from an unfamiliar IAM user.",
+          ],
+          secret: "Look for the S3 bucket named 'quantum-backup-███'",
+        },
+        "us-west-2": {
+          name: "US West (Oregon)",
+          description:
+            "AWS's largest region with extensive service availability.",
+          color: "#3B82F6",
+          events: [
+            "Lambda function execution patterns show algorithmic anomalies matching Dr. ███████'s research notes.",
+            "A network ACL was changed to allow inbound traffic from an unusual IP range.",
+          ],
+          secret: "The key is in the DynamoDB table named 'Drift_Sequence'",
+        },
+        "eu-west-1": {
+          name: "EU (Ireland)",
+          description:
+            "The first AWS region in Europe, serving international customers.",
+          color: "#10B981",
+          events: [
+            "An S3 bucket containing architectural diagrams was made public then quickly deleted.",
+            "Unusual spikes in data transfer to CloudFront distributions during off-peak hours.",
+          ],
+          secret: "Find the hidden ELB listener on port 31415",
+        },
+        "eu-central-1": {
+          name: "EU (Frankfurt)",
+          description:
+            "A major European region with strong data sovereignty guarantees.",
+          color: "#10B981",
+          events: [
+            "RDS instance logs show queries matching Dr. ███████'s last known research project.",
+            "VPC flow logs indicate covert data exfiltration via DNS tunneling.",
+          ],
+          secret:
+            "SSM Parameter Store holds the coordinates under '/quantum/location'",
+        },
+        "ap-northeast-1": {
+          name: "Asia Pacific (Tokyo)",
+          description: "AWS region serving the high-tech Japanese market.",
+          color: "#EF4444",
+          events: [
+            "A DynamoDB table was exported just minutes before security lockdowns began.",
+            "EC2 Spot Instance usage spiked anomalously, indicating possible compute-intensive work.",
+          ],
+          secret: "The API Gateway has a hidden route at /v2/quantum",
+        },
+        "ap-southeast-1": {
+          name: "Asia Pacific (Singapore)",
+          description: "Major APAC region with extensive connectivity.",
+          color: "#EF4444",
+          events: [
+            "CloudWatch alarms were disabled on multiple services during the critical period.",
+            "An EBS snapshot was shared with an external AWS account then revoked.",
+          ],
+          secret: "Decrypt the KMS key with alias 'quantum_keyring'",
+        },
+        "ap-southeast-2": {
+          name: "Asia Pacific (Sydney)",
+          description:
+            "AWS region serving Australian and New Zealand customers.",
+          color: "#EF4444",
+          events: [
+            "AWS Config shows abrupt IAM permission changes to several critical roles.",
+            "Route 53 hosted zone queries reveal DNS lookups for obscure subdomains.",
+          ],
+          secret: "The CloudFormation stack 'DriftMonitor' has the evidence",
+        },
+        "sa-east-1": {
+          name: "South America (São Paulo)",
+          description: "The only AWS region in South America.",
+          color: "#F59E0B",
+          events: [
+            "An unusual Lambda function with encrypted environment variables was deployed then removed.",
+            "SQS queues show message patterns matching quantum algorithm signatures.",
+          ],
+          secret: "The X-Ray trace group 'QuantumPath' holds answers",
+        },
+      };
+
+      // Random Events
+      const randomEvents = [
+        {
+          title: "Security Breach Attempt",
+          description:
+            "Your deployment is under attack! AWS Shield has detected a DDoS attempt.",
+          choices: [
+            {
+              text: "Deploy AWS WAF rules (Cost: 50 credits)",
+              outcome: "Successfully mitigated attack. Security +2",
+              action: function () {
+                if (gameState.player.credits >= 50) {
+                  gameState.player.credits -= 50;
+                  const currentSecurity = parseInt(
+                    document.getElementById("security-level").textContent
+                  );
+                  document.getElementById("security-level").textContent =
+                    currentSecurity + 2;
+                  return "Attack mitigated. System secured.";
+                } else {
+                  return "Not enough credits. Security compromised. Health -10";
+                }
+              },
+            },
+            {
+              text: "Scale up resources to absorb attack (Cost: 100 credits)",
+              outcome:
+                "Handled attack but at higher cost. Performance +3, Scalability +1",
+              action: function () {
+                if (gameState.player.credits >= 100) {
+                  gameState.player.credits -= 100;
+                  const currentPerformance = parseInt(
+                    document.getElementById("performance-level").textContent
+                  );
+                  const currentScalability = parseInt(
+                    document.getElementById("scalability-level").textContent
+                  );
+                  document.getElementById("performance-level").textContent =
+                    currentPerformance + 3;
+                  document.getElementById("scalability-level").textContent =
+                    currentScalability + 1;
+                  return "Successfully scaled to handle attack traffic.";
+                } else {
+                  return "Not enough credits. System overloaded. Health -20";
+                }
+              },
+            },
+            {
+              text: "Ignore and hope it passes",
+              outcome: "Risky but costs nothing.",
+              action: function () {
+                const random = Math.random();
+                if (random > 0.7) {
+                  gameState.player.health -= 15;
+                  return "Attack caused significant damage. Health -15";
+                } else {
+                  return "Attack subsided on its own.";
+                }
+              },
+            },
+          ],
+        },
+        {
+          title: "Performance Issue",
+          description:
+            "Users are complaining about slow response times from your application.",
+          choices: [
+            {
+              text: "Optimize database queries (Cost: 30 credits, requires RDS)",
+              outcome: "Performance +2, Cost Opt +1",
+              action: function () {
+                if (
+                  gameState.player.credits >= 30 &&
+                  gameState.player.resources.rds > 0
+                ) {
+                  gameState.player.credits -= 30;
+                  const currentPerformance = parseInt(
+                    document.getElementById("performance-level").textContent
+                  );
+                  const currentCost = parseInt(
+                    document.getElementById("cost-level").textContent
+                  );
+                  document.getElementById("performance-level").textContent =
+                    currentPerformance + 2;
+                  document.getElementById("cost-level").textContent =
+                    currentCost + 1;
+                  return "Query optimization successful. Performance improved.";
+                } else if (gameState.player.resources.rds === 0) {
+                  return "You don't have RDS deployed! Can't optimize queries. Performance -1";
+                } else {
+                  return "Not enough credits. Performance issues persist. Health -5";
+                }
+              },
+            },
+            {
+              text: "Add CloudFront CDN (Cost: 75 credits)",
+              outcome: "Performance +4, adds CloudFront to inventory",
+              action: function () {
+                if (gameState.player.credits >= 75) {
+                  gameState.player.credits -= 75;
+                  gameState.player.resources.cloudfront += 1;
+                  const currentPerformance = parseInt(
+                    document.getElementById("performance-level").textContent
+                  );
+                  document.getElementById("performance-level").textContent =
+                    currentPerformance + 4;
+                  updateInventory();
+                  return "CloudFront deployed. Performance significantly improved.";
+                } else {
+                  return "Not enough credits. Performance issues persist. Health -5";
+                }
+              },
+            },
+            {
+              text: "Do nothing",
+              outcome: "Users remain unhappy.",
+              action: function () {
+                return "Performance issues continue. Health -5";
+              },
+            },
+          ],
+        },
+        {
+          title: "Cost Review",
+          description: "Your AWS bill is higher than expected this month.",
+          choices: [
+            {
+              text: "Implement cost-saving measures (Cost: 40 credits)",
+              outcome: "Cost Opt +3, may impact performance",
+              action: function () {
+                if (gameState.player.credits >= 40) {
+                  gameState.player.credits -= 40;
+                  const currentCost = parseInt(
+                    document.getElementById("cost-level").textContent
+                  );
+                  document.getElementById("cost-level").textContent =
+                    currentCost + 3;
+
+                  // Small chance performance is affected
+                  if (Math.random() > 0.8) {
+                    const currentPerformance = parseInt(
+                      document.getElementById("performance-level").textContent
+                    );
+                    document.getElementById("performance-level").textContent =
+                      Math.max(0, currentPerformance - 1);
+                    return "Costs optimized but with slight performance impact.";
+                  }
+                  return "Cost saving measures implemented successfully.";
+                } else {
+                  return "Not enough credits. Costs remain high. Health -5";
+                }
+              },
+            },
+            {
+              text: "Purchase Reserved Instances (Cost: 150 credits)",
+              outcome: "Cost Opt +5, long-term savings",
+              action: function () {
+                if (gameState.player.credits >= 150) {
+                  gameState.player.credits -= 150;
+                  const currentCost = parseInt(
+                    document.getElementById("cost-level").textContent
+                  );
+                  document.getElementById("cost-level").textContent =
+                    currentCost + 5;
+                  return "Reserved Instances purchased. Significant long-term savings.";
+                } else {
+                  return "Not enough credits. Costs remain high. Health -10";
+                }
+              },
+            },
+            {
+              text: "Ignore the bill",
+              outcome: "Credits will be deducted automatically",
+              action: function () {
+                const penalty = Math.floor(gameState.player.credits * 0.1);
+                gameState.player.credits -= penalty;
+                return `Auto-deducted ${penalty} credits for AWS bill payment.`;
+              },
+            },
+          ],
+        },
+        {
+          title: "Clue Discovery",
+          description:
+            "While reviewing logs, you find an anomalous entry that might relate to Dr. ███████'s disappearance.",
+          choices: [
+            {
+              text: "Investigate thoroughly (Cost: 25 credits)",
+              outcome: "May find valuable clues",
+              action: function () {
+                if (gameState.player.credits >= 25) {
+                  gameState.player.credits -= 25;
+                  // 70% chance of finding a clue
+                  if (Math.random() > 0.3) {
+                    const clue = getRandomClue();
+                    gameState.case.clues.push(clue);
+                    return `Clue discovered: ${clue}`;
+                  } else {
+                    return "Thorough investigation revealed nothing unusual.";
+                  }
+                } else {
+                  return "Not enough credits to conduct investigation.";
+                }
+              },
+            },
+            {
+              text: "Quick scan (Cost: 10 credits)",
+              outcome: "Small chance of finding clues",
+              action: function () {
+                if (gameState.player.credits >= 10) {
+                  gameState.player.credits -= 10;
+                  // 30% chance of finding a clue
+                  if (Math.random() > 0.7) {
+                    const clue = getRandomClue();
+                    gameState.case.clues.push(clue);
+                    return `Clue discovered: ${clue}`;
+                  } else {
+                    return "Quick scan didn't reveal anything noteworthy.";
+                  }
+                } else {
+                  return "Not enough credits to conduct scan.";
+                }
+              },
+            },
+            {
+              text: "Mark for later review",
+              outcome: "No cost, no progress",
+              action: function () {
+                return "Logged for future investigation.";
+              },
+            },
+          ],
+        },
+      ];
+
+      // Game Functions
+      function startGame() {
+        document.getElementById("start-modal").classList.add("hidden");
+        document.getElementById("world-map-view").classList.remove("hidden");
+        gameState.phase = "world";
+
+        // Animate mission briefing
+        const briefing =
+          "> MISSION BRIEFING:\n> Dr. Linda ███████, top AWS Certified Solutions Architect, vanished while investigating \n> quantum computing anomalies in AWS Global Infrastructure. Your task: follow her \n> trail through AWS regions, gather clues from cloud services, and uncover the truth \n> behind her disappearance. Beware of hostile entities monitoring the network.\n> Good luck, Agent.";
+        typeWriter(
+          document.getElementById("mission-briefing"),
+          briefing,
+          20,
+          () => {
+            document
+              .getElementById("start-game-btn")
+              .classList.remove("opacity-50");
+          }
+        );
+
+        // Start game clock
+        setInterval(advanceGameTime, 30000); // Every 30 seconds = 1 hour game time
+      }
+
+      function travelToRegion(regionId) {
+        if (!gameState.player.location) {
+          // First deployment
+          gameState.player.location = regionId;
+          gameState.player.visitedRegions.push(regionId);
+
+          // Update UI
+          document
+            .querySelector(`#world-map path[data-region="${regionId}"]`)
+            .classList.add("current", "visited");
+          document
+            .getElementById("current-location")
+            .querySelector("span").textContent = awsRegions[regionId].name;
+          document
+            .getElementById("location-controls")
+            .classList.remove("hidden");
+
+          // Start first event
+          triggerRandomEvent();
+        } else {
+          // Already deployed somewhere
+          document
+            .querySelector(
+              `#world-map path[data-region="${gameState.player.location}"]`
+            )
+            .classList.remove("current");
+          gameState.player.location = regionId;
+
+          if (!gameState.player.visitedRegions.includes(regionId)) {
+            gameState.player.visitedRegions.push(regionId);
+            document
+              .querySelector(`#world-map path[data-region="${regionId}"]`)
+              .classList.add("visited");
+          }
+
+          document
+            .querySelector(`#world-map path[data-region="${regionId}"]`)
+            .classList.add("current");
+          document
+            .getElementById("current-location")
+            .querySelector("span").textContent = awsRegions[regionId].name;
+
+          // Travel consumes resources
+          gameState.player.health -= 5;
+          updatePlayerStats();
+
+          // Chance of travel event
+          if (Math.random() > 0.7) {
+            triggerRandomEvent();
+          }
+        }
+
+        // Add region-specific clue
+        if (!gameState.case.targetRegion && Math.random() > 0.5) {
+          const regionEvents = awsRegions[regionId].events;
+          const randomEvent =
+            regionEvents[Math.floor(Math.random() * regionEvents.length)];
+          gameState.case.clues.push(randomEvent);
+
+          // Update case files
+          document.getElementById("current-lead").textContent = randomEvent;
+
+          // Small chance this is the target region
+          if (Math.random() > 0.8) {
+            gameState.case.targetRegion = regionId;
+            gameState.case.currentLead = `Strong evidence points to ${awsRegions[regionId].name}. Investigate thoroughly!`;
+            document.getElementById("current-lead").textContent =
+              gameState.case.currentLead;
+          }
+        }
+      }
+
+      function triggerRandomEvent() {
+        if (gameState.phase !== "world") return;
+
+        gameState.currentEvent =
+          randomEvents[Math.floor(Math.random() * randomEvents.length)];
+        gameState.phase = "event";
+
+        // Update UI
+        document.getElementById("world-map-view").classList.add("hidden");
+        document.getElementById("event-view").classList.remove("hidden");
+
+        document.getElementById("event-title").textContent =
+          gameState.currentEvent.title;
+        document.getElementById("event-description").textContent =
+          gameState.currentEvent.description;
+
+        const choicesContainer = document.getElementById("event-choices");
+        choicesContainer.innerHTML = "";
+
+        gameState.currentEvent.choices.forEach((choice, index) => {
+          const button = document.createElement("button");
+          button.className =
+            "bg-gray-700 hover:bg-gray-600 p-3 rounded text-left";
+          button.innerHTML = `
+                    <div class="font-bold">${choice.text}</div>
+                    <div class="text-xs text-gray-400 mt-1">${choice.outcome}</div>
+                `;
+          button.addEventListener("click", () => handleEventChoice(index));
+          choicesContainer.appendChild(button);
+        });
+      }
+
+      function handleEventChoice(choiceIndex) {
+        const choice = gameState.currentEvent.choices[choiceIndex];
+        const result = choice.action();
+
+        // Add result to console
+        addToConsole(`> ${gameState.currentEvent.title}: ${result}`);
+
+        // Return to world view
+        document.getElementById("event-view").classList.add("hidden");
+        document.getElementById("world-map-view").classList.remove("hidden");
+        gameState.phase = "world";
+
+        updatePlayerStats();
+      }
+
+      function startHacking(service) {
+        gameState.phase = "fps";
+        gameState.fpsGame.active = true;
+        gameState.fpsGame.score = 0;
+        gameState.fpsGame.timeLeft = 30;
+        gameState.fpsGame.serviceBeingHacked = service;
+
+        // Update UI
+        document.getElementById("world-map-view").classList.add("hidden");
+        document.getElementById("fps-view").classList.remove("hidden");
+        document.getElementById("hack-progress-bar").style.width = "0%";
+        document.getElementById("hack-timer").textContent = "30s";
+
+        // Start timer
+        gameState.fpsGame.interval = setInterval(() => {
+          gameState.fpsGame.timeLeft--;
+          document.getElementById(
+            "hack-timer"
+          ).textContent = `${gameState.fpsGame.timeLeft}s`;
+
+          if (gameState.fpsGame.timeLeft <= 0) {
+            endHacking();
+          }
+        }, 1000);
+
+        // Spawn targets
+        spawnHackingTargets();
+      }
+
+      function spawnHackingTargets() {
+        if (!gameState.fpsGame.active) return;
+
+        const fpsContainer = document.getElementById("fps-targets");
+
+        // Clear old targets
+        fpsContainer.innerHTML = "";
+        gameState.fpsGame.targets = [];
+
+        // Determine number of targets based on difficulty
+        const targetCount = 3 + Math.floor(gameState.player.level / 2);
+
+        for (let i = 0; i < targetCount; i++) {
+          const target = document.createElement("div");
+          target.className = "fps-target";
+
+          // Random position (avoid edges)
+          const x = 50 + Math.random() * (fpsContainer.offsetWidth - 100);
+          const y = 50 + Math.random() * (fpsContainer.offsetHeight - 100);
+
+          target.style.left = `${x}px`;
+          target.style.top = `${y}px`;
+
+          // Different service icons
+          const services = [
+            "fa-server",
+            "fa-database",
+            "fa-bolt",
+            "fa-table",
+            "fa-network-wired",
+            "fa-list-alt",
+          ];
+          const randomService =
+            services[Math.floor(Math.random() * services.length)];
+
+          target.innerHTML = `<i class="fas ${randomService}"></i>`;
+
+          // Click handler
+          target.addEventListener("click", () => {
+            if (!gameState.fpsGame.active) return;
+
+            // Remove target
+            target.style.transform = "scale(1.5)";
+            target.style.opacity = "0";
+
+            setTimeout(() => {
+              target.remove();
+            }, 200);
+
+            // Increase score
+            gameState.fpsGame.score++;
+
+            // Update progress
+            const progress = (gameState.fpsGame.score / 15) * 100;
+            document.getElementById(
+              "hack-progress-bar"
+            ).style.width = `${Math.min(progress, 100)}%`;
+
+            // Show terminal feedback
+            const ops = [
+              "decrypting",
+              "scanning",
+              "analyzing",
+              "cracking",
+              "reverse-engineering",
+            ];
+            const randomOp = ops[Math.floor(Math.random() * ops.length)];
+            addToTerminal(
+              `> ${randomOp} ${
+                awsServices[gameState.fpsGame.serviceBeingHacked].name
+              } data... ${Math.floor(progress)}% complete`
+            );
+
+            // Check for win condition
+            if (progress >= 100) {
+              endHacking(true);
+            }
+
+            // Spawn new target after delay
+            setTimeout(spawnHackingTargets, 1000);
+          });
+
+          fpsContainer.appendChild(target);
+          gameState.fpsGame.targets.push(target);
+        }
+      }
+
+      function endHacking(success = false) {
+        gameState.fpsGame.active = false;
+        clearInterval(gameState.fpsGame.interval);
+
+        // Update UI
+        document.getElementById("hack-progress-bar").style.width = "0%";
+        document.getElementById("fps-view").classList.add("hidden");
+        document.getElementById("world-map-view").classList.remove("hidden");
+
+        // Handle results
+        if (success) {
+          const service = awsServices[gameState.fpsGame.serviceBeingHacked];
+
+          // Add to inventory
+          gameState.player.resources[gameState.fpsGame.serviceBeingHacked]++;
+
+          // Add to deployed services if not already there
+          if (
+            !gameState.player.deployedServices.includes(
+              gameState.fpsGame.serviceBeingHacked
+            )
+          ) {
+            gameState.player.deployedServices.push(
+              gameState.fpsGame.serviceBeingHacked
+            );
+          }
+
+          // Update architecture stats
+          updateArchitectureStats();
+
+          // Gain XP
+          gameState.player.xp += 5;
+          if (gameState.player.xp >= gameState.player.level * 10) {
+            gameState.player.level++;
+            gameState.player.xp = 0;
+            gameState.player.maxHealth += 10;
+            gameState.player.health = gameState.player.maxHealth;
+            addToConsole(
+              `> LEVEL UP! You are now Level ${gameState.player.level}`
+            );
+          }
+
+          addToConsole(`> Successfully deployed ${service.name}!`);
+
+          // Chance to find clues when deploying services
+          if (Math.random() > 0.7 && gameState.player.location) {
+            const regionEvents = awsRegions[gameState.player.location].events;
+            const randomEvent =
+              regionEvents[Math.floor(Math.random() * regionEvents.length)];
+            gameState.case.clues.push(randomEvent);
+            addToConsole(
+              `> Found clue in ${
+                awsRegions[gameState.player.location].name
+              } logs: ${randomEvent}`
+            );
+          }
+        } else {
+          addToConsole(
+            `> Failed to fully analyze ${
+              awsServices[gameState.fpsGame.serviceBeingHacked].name
+            } data.`
+          );
+          gameState.player.health -= 10;
+        }
+
+        gameState.phase = "world";
+        updatePlayerStats();
+      }
+
+      function updatePlayerStats() {
+        document.getElementById("player-level").textContent =
+          gameState.player.level;
+        document.getElementById("player-xp-bar").style.width = `${
+          (gameState.player.xp / (gameState.player.level * 10)) * 100
+        }%`;
+
+        // Update health (with bounds checking)
+        gameState.player.health = Math.max(
+          0,
+          Math.min(gameState.player.health, gameState.player.maxHealth)
+        );
+        document.getElementById(
+          "player-health-text"
+        ).textContent = `${gameState.player.health}/${gameState.player.maxHealth}`;
+        document.getElementById("player-health-bar").style.width = `${
+          (gameState.player.health / gameState.player.maxHealth) * 100
+        }%`;
+
+        // Check for game over
+        if (gameState.player.health <= 0) {
+          addToConsole(
+            "> CRITICAL FAILURE: Agent health depleted. Mission failed."
+          );
+          setTimeout(resetGame, 3000);
+        }
+
+        document.getElementById("player-credits").textContent =
+          gameState.player.credits;
+        document.getElementById("player-certs").textContent =
+          gameState.player.certs;
+
+        updateInventory();
+      }
+
+      function updateArchitectureStats() {
+        let security = 0;
+        let performance = 0;
+        let scalability = 0;
+        let cost = 0;
+
+        gameState.player.deployedServices.forEach((service) => {
+          security += awsServices[service].security;
+          performance += awsServices[service].performance;
+          scalability += awsServices[service].scalability;
+          cost += awsServices[service].cost;
+        });
+
+        document.getElementById("security-level").textContent = security;
+        document.getElementById("performance-level").textContent = performance;
+        document.getElementById("scalability-level").textContent = scalability;
+        document.getElementById("cost-level").textContent = cost;
+
+        // Update server status
+        const status = document.getElementById("server-status");
+        if (gameState.player.deployedServices.length > 0) {
+          status.querySelector("div").className =
+            "w-3 h-3 rounded-full bg-green-500 mr-2";
+          status.querySelector(
+            "span"
+          ).textContent = `${gameState.player.deployedServices.length} services deployed`;
+        }
+      }
+
+      function updateInventory() {
+        const inventory = document.getElementById("inventory");
+        inventory.innerHTML = "";
+
+        Object.keys(gameState.player.resources).forEach((service) => {
+          if (gameState.player.resources[service] > 0) {
+            const item = document.createElement("div");
+            item.className =
+              "bg-gray-700 rounded p-2 text-center inventory-item";
+            item.title = `${awsServices[service].name}\n${awsServices[service].description}`;
+
+            item.innerHTML = `
+                        <i class="fas ${getServiceIcon(
+                          service
+                        )} text-${getServiceColor(service)}-400 mb-1"></i>
+                        <div class="text-xs">${service.toUpperCase()} x<span>${
+              gameState.player.resources[service]
+            }</span></div>
+                    `;
+
+            inventory.appendChild(item);
+          }
+        });
+      }
+
+      function getServiceIcon(service) {
+        switch (service) {
+          case "ec2":
+            return "fa-server";
+          case "s3":
+            return "fa-database";
+          case "lambda":
+            return "fa-bolt";
+          case "rds":
+            return "fa-table";
+          case "cloudfront":
+            return "fa-network-wired";
+          case "dynamodb":
+            return "fa-list-alt";
+          default:
+            return "fa-question";
+        }
+      }
+
+      function getServiceColor(service) {
+        switch (service) {
+          case "ec2":
+            return "blue";
+          case "s3":
+            return "yellow";
+          case "lambda":
+            return "green";
+          case "rds":
+            return "red";
+          case "cloudfront":
+            return "purple";
+          case "dynamodb":
+            return "pink";
+          default:
+            return "gray";
+        }
+      }
+
+      function addToConsole(text) {
+        const consoleElement = document.getElementById("console");
+        const newLine = document.createElement("div");
+        newLine.textContent = text;
+        consoleElement.appendChild(newLine);
+        consoleElement.scrollTop = consoleElement.scrollHeight;
+      }
+
+      function addToTerminal(text) {
+        const terminal = document.getElementById("terminal-screen");
+        const newLine = document.createElement("div");
+        newLine.textContent = text;
+        terminal.appendChild(newLine);
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+
+      function getRandomClue() {
+        const allClues = [];
+        Object.values(awsRegions).forEach((region) => {
+          allClues.push(...region.events);
+        });
+        return allClues[Math.floor(Math.random() * allClues.length)];
+      }
+
+      function advanceGameTime() {
+        gameState.case.gameTime++;
+        if (gameState.case.gameTime >= 24) {
+          gameState.case.gameTime = 0;
+          gameState.case.daysElapsed++;
+
+          // Daily credit income
+          gameState.player.credits += 50 + gameState.player.level * 10;
+          addToConsole(
+            `> Daily AWS budget allocated: ${
+              50 + gameState.player.level * 10
+            } credits added`
+          );
+
+          // Chance of random event each day
+          if (Math.random() > 0.5) {
+            triggerRandomEvent();
+          }
+        }
+
+        // Update clock display
+        const dayString = `Day ${gameState.case.daysElapsed + 1}`;
+        const timeString = `${gameState.case.gameTime
+          .toString()
+          .padStart(2, "0")}:00 UTC`;
+        document.getElementById(
+          "game-clock"
+        ).textContent = `${dayString}, ${timeString}`;
+
+        // Health recovery when resting in a region
+        if (gameState.case.gameTime >= 22 || gameState.case.gameTime <= 6) {
+          gameState.player.health = Math.min(
+            gameState.player.maxHealth,
+            gameState.player.health + 2
+          );
+          updatePlayerStats();
+        }
+      }
+
+      function resetGame() {
+        // Reset game state
+        gameState.player = {
+          name: "AGENT_███████",
+          level: 1,
+          xp: 0,
+          health: 100,
+          maxHealth: 100,
+          credits: 500,
+          certs: 0,
+          location: null,
+          visitedRegions: [],
+          resources: {
+            ec2: 1,
+            s3: 0,
+            lambda: 0,
+            rds: 0,
+            cloudfront: 0,
+            dynamodb: 0,
+          },
+          deployedServices: [],
+        };
+
+        gameState.case = {
+          objective:
+            "Locate the missing AWS Architect Dr. ███████ who disappeared while investigating irregularities in global cloud infrastructure.",
+          lastCoordinates: "Unknown - begin investigation in AWS regions",
+          currentLead: "No active leads - search for clues",
+          clues: [],
+          targetRegion: null,
+          daysElapsed: 0,
+          gameTime: 0,
+        };
+
+        // Reset UI
+        document.querySelectorAll("#world-map path").forEach((path) => {
+          path.classList.remove("current", "visited");
+        });
+
+        document
+          .getElementById("current-location")
+          .querySelector("span").textContent = "Offline";
+        document.getElementById("location-controls").classList.add("hidden");
+        document.getElementById("last-coordinates").textContent =
+          "Unknown - begin investigation in AWS regions";
+        document.getElementById("current-lead").textContent =
+          "No active leads - search for clues";
+        document.getElementById("game-clock").textContent = "Day 1, 08:00 UTC";
+
+        // Clear consoles
+        document.getElementById("console").innerHTML = `
+                <div>> Booting Quantum Drift v2.3.7...</div>
+                <div>> Establishing secure connection to AWS backbone...</div>
+                <div>> Authentication: <span class="text-white">AGENT_███████</span></div>
+                <div>> Welcome back, Agent. Systems nominal.</div>
+                <div>> Last login: 47 minutes ago from unidentified terminal</div>
+            `;
+
+        updatePlayerStats();
+        updateInventory();
+
+        // Show start modal again
+        document.getElementById("start-modal").classList.remove("hidden");
+
+        // Reset mission briefing animation
+        document.getElementById("mission-briefing").style.width = "0";
+        document.getElementById("mission-briefing").style.animation = "none";
+        document.getElementById("mission-briefing").textContent = "";
+        document.getElementById("start-game-btn").classList.add("opacity-50");
+      }
+
+      function checkForWin() {
+        if (!gameState.case.targetRegion) return false;
+
+        // Player needs to have discovered the secret in the target region
+        const hasSecret = gameState.case.clues.includes(
+          awsRegions[gameState.case.targetRegion].secret
+        );
+        const hasAllServices = Object.keys(awsServices).every((service) => {
+          return gameState.player.resources[service] > 0;
+        });
+
+        if (
+          hasSecret &&
+          hasAllServices &&
+          gameState.player.location === gameState.case.targetRegion
+        ) {
+          // Win the game
+          addToConsole(
+            "> CRITICAL MESSAGE DECRYPTED: Dr. ███████'s location confirmed!"
+          );
+          addToConsole(
+            "> QUANTUM ANOMALY NEUTRALIZED: The architect has been rescued!"
+          );
+          addToConsole(
+            "> MISSION COMPLETE. AWSDIRECTIVE OVERWATCH is pleased with your performance."
+          );
+
+          // Award final certification
+          gameState.player.certs++;
+
+          // Show win screen
+          setTimeout(() => {
+            alert(
+              `CONGRATULATIONS AGENT!\n\nYou successfully rescued Dr. ███████ and uncovered the AWS quantum anomaly in ${
+                awsRegions[gameState.case.targetRegion].name
+              }.\n\nFinal Stats:\n- Level ${gameState.player.level}\n- ${
+                gameState.player.certs
+              } AWS Certifications Earned\n- ${
+                gameState.case.daysElapsed
+              } Days Elapsed\n- ${
+                gameState.player.credits
+              } Credits\n\nWant to play again?`
+            );
+            resetGame();
+          }, 2000);
+
+          return true;
+        }
+
+        return false;
+      }
+
+      function typeWriter(element, text, speed, callback) {
+        let i = 0;
+        element.style.animation = "none";
+        element.style.width = "100%";
+
+        function typing() {
+          if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+            setTimeout(typing, speed);
+          } else if (callback) {
+            callback();
+          }
+        }
+
+        typing();
+      }
+
+      // Event Listeners
+      document
+        .getElementById("start-game-btn")
+        .addEventListener("click", startGame);
+
+      document.querySelectorAll("#world-map path").forEach((path) => {
+        path.addEventListener("click", () => {
+          if (gameState.phase !== "world") return;
+
+          const region = path.dataset.region;
+          if (!gameState.player.location) {
+            // Initial deployment
+            travelToRegion(region);
+          } else {
+            // Show travel confirmation
+            addToConsole(
+              `> Preparing to redeploy infrastructure to ${awsRegions[region].name}`
+            );
+            setTimeout(() => {
+              travelToRegion(region);
+            }, 2000);
+          }
+        });
+      });
+
+      document
+        .getElementById("investigate-btn")
+        .addEventListener("click", () => {
+          if (!gameState.player.location) return;
+
+          // Cost to investigate
+          const cost = 20;
+          if (gameState.player.credits >= cost) {
+            gameState.player.credits -= cost;
+
+            // Chance to find clue
+            if (Math.random() > 0.4) {
+              const regionEvents = awsRegions[gameState.player.location].events;
+              const randomEvent =
+                regionEvents[Math.floor(Math.random() * regionEvents.length)];
+              gameState.case.clues.push(randomEvent);
+
+              // Update case files
+              gameState.case.lastCoordinates =
+                awsRegions[gameState.player.location].name;
+              document.getElementById("last-coordinates").textContent =
+                gameState.case.lastCoordinates;
+
+              // Small chance this is the target region
+              if (!gameState.case.targetRegion && Math.random() > 0.8) {
+                gameState.case.targetRegion = gameState.player.location;
+                gameState.case.currentLead = `Strong evidence points to ${
+                  awsRegions[gameState.player.location].name
+                }. Investigate thoroughly!`;
+                document.getElementById("current-lead").textContent =
+                  gameState.case.currentLead;
+              }
+
+              addToConsole(
+                `> Found clue in ${
+                  awsRegions[gameState.player.location].name
+                }: ${randomEvent}`
+              );
+            } else {
+              addToConsole(
+                `> Investigation in ${
+                  awsRegions[gameState.player.location].name
+                } revealed nothing unusual.`
+              );
+            }
+
+            updatePlayerStats();
+          } else {
+            addToConsole("> Insufficient credits for investigation");
+          }
+        });
+
+      document.querySelectorAll(".service-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          const service = button.dataset.service;
+
+          // Check if already hacked this service
+          if (gameState.player.resources[service] > 0) {
+            addToConsole(
+              `> ${awsServices[service].name} already deployed in current region.`
+            );
+            return;
+          }
+
+          // Check if we can afford it
+          if (gameState.player.credits >= awsServices[service].price) {
+            gameState.player.credits -= awsServices[service].price;
+
+            // Start hacking mini-game
+            addToConsole(
+              `> Initiating quantum hack of ${awsServices[service].name}...`
+            );
+            startHacking(service);
+
+            // Show terminal during hacking
+            document
+              .getElementById("terminal-screen")
+              .classList.remove("hidden");
+          } else {
+            addToConsole(
+              `> Insufficient credits (need ${awsServices[service].price}) to hack ${awsServices[service].name}`
+            );
+          }
+        });
+      });
+
+      document
+        .getElementById("console-input")
+        .addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            const command = document
+              .getElementById("console-input")
+              .value.trim();
+            if (command) {
+              addToConsole(`> ${command}`);
+              document.getElementById("console-input").value = "";
+
+              // Process command
+              if (command === "help") {
+                addToConsole(
+                  "> Available commands: help, status, deploy [service], scan, investigate, travel [region]"
+                );
+              } else if (command === "status") {
+                addToConsole(
+                  `> AGENT STATUS: Level ${gameState.player.level} (${
+                    gameState.player.xp
+                  }/${gameState.player.level * 10} XP)`
+                );
+                addToConsole(
+                  `> HEALTH: ${gameState.player.health}/${gameState.player.maxHealth}`
+                );
+                addToConsole(`> CREDITS: ${gameState.player.credits}`);
+                addToConsole(
+                  `> LOCATION: ${
+                    gameState.player.location
+                      ? awsRegions[gameState.player.location].name
+                      : "Not deployed"
+                  }`
+                );
+              } else if (command.startsWith("deploy ")) {
+                const service = command.split(" ")[1].toLowerCase();
+                if (awsServices[service]) {
+                  if (gameState.player.resources[service] > 0) {
+                    addToConsole(
+                      `> ${awsServices[service].name} already deployed in current region.`
+                    );
+                  } else {
+                    if (
+                      gameState.player.credits >= awsServices[service].price
+                    ) {
+                      gameState.player.credits -= awsServices[service].price;
+                      addToConsole(
+                        `> Initiating quantum hack of ${awsServices[service].name}...`
+                      );
+                      startHacking(service);
+                      document
+                        .getElementById("terminal-screen")
+                        .classList.remove("hidden");
+                    } else {
+                      addToConsole(
+                        `> Insufficient credits (need ${awsServices[service].price}) to hack ${awsServices[service].name}`
+                      );
+                    }
+                  }
+                } else {
+                  addToConsole(
+                    "> Unknown AWS service. Try: ec2, s3, lambda, rds, cloudfront, dynamodb"
+                  );
+                }
+              } else if (command === "scan") {
+                if (gameState.player.location) {
+                  const region = awsRegions[gameState.player.location];
+                  addToConsole(`> Scanning ${region.name}...`);
+                  setTimeout(() => {
+                    const randomEvent =
+                      region.events[
+                        Math.floor(Math.random() * region.events.length)
+                      ];
+                    gameState.case.clues.push(randomEvent);
+                    addToConsole(`> Found clue: ${randomEvent}`);
+
+                    // Small chance this is the target region
+                    if (!gameState.case.targetRegion && Math.random() > 0.8) {
+                      gameState.case.targetRegion = gameState.player.location;
+                      gameState.case.currentLead = `Strong evidence points to ${region.name}. Investigate thoroughly!`;
+                      document.getElementById("current-lead").textContent =
+                        gameState.case.currentLead;
+                      addToConsole(
+                        `> CRITICAL: Strong evidence points to ${region.name} as key location!`
+                      );
+                    }
+                  }, 2000);
+                } else {
+                  addToConsole(
+                    "> Not currently deployed to any region. Use 'travel [region]' first."
+                  );
+                }
+              } else if (command === "investigate") {
+                if (gameState.player.location) {
+                  if (
+                    gameState.case.targetRegion &&
+                    gameState.player.location === gameState.case.targetRegion
+                  ) {
+                    const region = awsRegions[gameState.player.location];
+
+                    // Check if player has found the secret
+                    if (gameState.case.clues.includes(region.secret)) {
+                      checkForWin();
+                    } else {
+                      addToConsole(
+                        "> Deep investigation reveals nothing new. Maybe we missed something?"
+                      );
+                    }
+                  } else {
+                    addToConsole(
+                      "> No significant leads to investigate here. Try another region."
+                    );
+                  }
+                } else {
+                  addToConsole(
+                    "> Not currently deployed to any region. Use 'travel [region]' first."
+                  );
+                }
+              } else if (command.startsWith("travel ")) {
+                const regionId = command.split(" ")[1];
+                if (awsRegions[regionId]) {
+                  if (gameState.player.location === regionId) {
+                    addToConsole(`> Already in ${awsRegions[regionId].name}`);
+                  } else {
+                    addToConsole(
+                      `> Preparing to redeploy infrastructure to ${awsRegions[regionId].name}`
+                    );
+                    setTimeout(() => {
+                      travelToRegion(regionId);
+                    }, 2000);
+                  }
+                } else {
+                  addToConsole(
+                    "> Unknown AWS region. Try: us-east-1, us-west-2, eu-west-1, etc."
+                  );
+                }
+              } else {
+                addToConsole(
+                  "> Command not recognized. Type 'help' for available commands."
+                );
+              }
+            }
+          }
+        });
+
+      document
+        .getElementById("console-submit")
+        .addEventListener("click", () => {
+          const command = document.getElementById("console-input").value.trim();
+          if (command) {
+            addToConsole(`> ${command}`);
+            document.getElementById("console-input").value = "";
+
+            // Process command (same as above)
+            if (command === "help") {
+              addToConsole(
+                "> Available commands: help, status, deploy [service], scan, investigate, travel [region]"
+              );
+            } else if (command === "status") {
+              addToConsole(
+                `> AGENT STATUS: Level ${gameState.player.level} (${
+                  gameState.player.xp
+                }/${gameState.player.level * 10} XP)`
+              );
+              addToConsole(
+                `> HEALTH: ${gameState.player.health}/${gameState.player.maxHealth}`
+              );
+              addToConsole(`> CREDITS: ${gameState.player.credits}`);
+              addToConsole(
+                `> LOCATION: ${
+                  gameState.player.location
+                    ? awsRegions[gameState.player.location].name
+                    : "Not deployed"
+                }`
+              );
+            } else if (command.startsWith("deploy ")) {
+              const service = command.split(" ")[1].toLowerCase();
+              if (awsServices[service]) {
+                if (gameState.player.resources[service] > 0) {
+                  addToConsole(
+                    `> ${awsServices[service].name} already deployed in current region.`
+                  );
+                } else {
+                  if (gameState.player.credits >= awsServices[service].price) {
+                    gameState.player.credits -= awsServices[service].price;
+                    addToConsole(
+                      `> Initiating quantum hack of ${awsServices[service].name}...`
+                    );
+                    startHacking(service);
+                    document
+                      .getElementById("terminal-screen")
+                      .classList.remove("hidden");
+                  } else {
+                    addToConsole(
+                      `> Insufficient credits (need ${awsServices[service].price}) to hack ${awsServices[service].name}`
+                    );
+                  }
+                }
+              } else {
+                addToConsole(
+                  "> Unknown AWS service. Try: ec2, s3, lambda, rds, cloudfront, dynamodb"
+                );
+              }
+            } else if (command === "scan") {
+              if (gameState.player.location) {
+                const region = awsRegions[gameState.player.location];
+                addToConsole(`> Scanning ${region.name}...`);
+                setTimeout(() => {
+                  const randomEvent =
+                    region.events[
+                      Math.floor(Math.random() * region.events.length)
+                    ];
+                  gameState.case.clues.push(randomEvent);
+                  addToConsole(`> Found clue: ${randomEvent}`);
+
+                  if (!gameState.case.targetRegion && Math.random() > 0.8) {
+                    gameState.case.targetRegion = gameState.player.location;
+                    gameState.case.currentLead = `Strong evidence points to ${region.name}. Investigate thoroughly!`;
+                    document.getElementById("current-lead").textContent =
+                      gameState.case.currentLead;
+                    addToConsole(
+                      `> CRITICAL: Strong evidence points to ${region.name} as key location!`
+                    );
+                  }
+                }, 2000);
+              } else {
+                addToConsole(
+                  "> Not currently deployed to any region. Use 'travel [region]' first."
+                );
+              }
+            } else if (command === "investigate") {
+              if (gameState.player.location) {
+                if (
+                  gameState.case.targetRegion &&
+                  gameState.player.location === gameState.case.targetRegion
+                ) {
+                  const region = awsRegions[gameState.player.location];
+
+                  if (gameState.case.clues.includes(region.secret)) {
+                    checkForWin();
+                  } else {
+                    addToConsole(
+                      "> Deep investigation reveals nothing new. Maybe we missed something?"
+                    );
+                  }
+                } else {
+                  addToConsole(
+                    "> No significant leads to investigate here. Try another region."
+                  );
+                }
+              } else {
+                addToConsole(
+                  "> Not currently deployed to any region. Use 'travel [region]' first."
+                );
+              }
+            } else if (command.startsWith("travel ")) {
+              const regionId = command.split(" ")[1];
+              if (awsRegions[regionId]) {
+                if (gameState.player.location === regionId) {
+                  addToConsole(`> Already in ${awsRegions[regionId].name}`);
+                } else {
+                  addToConsole(
+                    `> Preparing to redeploy infrastructure to ${awsRegions[regionId].name}`
+                  );
+                  setTimeout(() => {
+                    travelToRegion(regionId);
+                  }, 2000);
+                }
+              } else {
+                addToConsole(
+                  "> Unknown AWS region. Try: us-east-1, us-west-2, eu-west-1, etc."
+                );
+              }
+            } else {
+              addToConsole(
+                "> Command not recognized. Type 'help' for available commands."
+              );
+            }
+          }
+        });
+
+      document.getElementById("close-aws-doc").addEventListener("click", () => {
+        document.getElementById("aws-doc-modal").classList.add("hidden");
+      });
+
+      // Initialize game
+      updatePlayerStats();
+      updateInventory();
+
+      // Type welcome message
+      setTimeout(() => {
+        document.getElementById("mission-briefing").style.animation =
+          "typewriter 4s steps(40) 1s 1 normal both";
+      }, 1000);
+    </script>
+  </body>
+</html>
