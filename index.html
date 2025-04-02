@@ -43,6 +43,47 @@
           filter: hue-rotate(360deg);
         }
       }
+      @keyframes targetHit {
+        0% {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.3) rotate(45deg);
+        }
+        100% {
+          transform: scale(0) rotate(90deg);
+          opacity: 0;
+        }
+      }
+      @keyframes terminalBlink {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      @keyframes shake {
+        0% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
       .terminal-text {
         font-family: "Courier New", monospace;
         animation: terminalGlow 2s infinite;
@@ -83,7 +124,10 @@
         transition: transform 0.1s;
       }
       .fps-target:hover {
-        transform: scale(1.2);
+        transform: scale(1.1);
+      }
+      .fps-target.hit {
+        animation: targetHit 0.3s forwards;
       }
       .health-bar {
         transition: width 0.5s ease;
@@ -104,17 +148,52 @@
         white-space: nowrap;
         letter-spacing: 0.15em;
       }
-      .pixelated {
-        image-rendering: pixelated;
+      .cursor-blink {
+        animation: terminalBlink 1s step-end infinite;
+      }
+      .shake {
+        animation: shake 0.5s ease 1;
+      }
+      .hexagon {
+        clip-path: polygon(
+          25% 0%,
+          75% 0%,
+          100% 50%,
+          75% 100%,
+          25% 100%,
+          0% 50%
+        );
+        width: 60px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 2px;
+      }
+      .progress-ring__circle {
+        transition: stroke-dashoffset 0.35s;
+        transform: rotate(-90deg);
+        transform-origin: 50% 50%;
+      }
+      @media (max-width: 768px) {
+        .game-container {
+          grid-template-columns: 1fr;
+        }
+        .panel {
+          order: initial !important;
+          margin-bottom: 1rem;
+        }
       }
     </style>
   </head>
   <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
     <!-- Game Container -->
-    <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 p-4">
+    <div
+      class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 game-container"
+    >
       <!-- Left Panel - Player Stats -->
       <div
-        class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-1 order-2 lg:order-1"
+        class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-1 order-2 lg:order-1 panel"
       >
         <div class="mb-6">
           <h2 class="text-xl font-bold mb-2 flex items-center">
@@ -188,6 +267,23 @@
               </div>
             </div>
           </div>
+          <div class="w-full bg-gray-700 rounded p-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-sm text-gray-300">Architecture Score</span>
+              <span id="architecture-score" class="font-bold">0</span>
+            </div>
+            <svg class="w-full h-2 rounded">
+              <rect width="100%" height="6" fill="#374151" rx="3" ry="3"></rect>
+              <rect
+                id="architecture-score-bar"
+                width="0%"
+                height="6"
+                fill="#8B5CF6"
+                rx="3"
+                ry="3"
+              ></rect>
+            </svg>
+          </div>
         </div>
 
         <div>
@@ -197,12 +293,13 @@
           </h2>
           <div id="inventory" class="grid grid-cols-3 gap-2">
             <!-- Items will be added here dynamically -->
-            <div
-              class="bg-gray-700 rounded p-2 text-center inventory-item"
-              title="EC2 Instance\nBasic compute resource"
-            >
-              <i class="fas fa-server text-blue-400 mb-1"></i>
-              <div class="text-xs">EC2 x<span>1</span></div>
+          </div>
+          <div class="mt-3">
+            <h3 class="text-sm font-semibold text-gray-400 mb-1">
+              DEPLOYED SERVICES
+            </h3>
+            <div id="deployed-services" class="flex flex-wrap">
+              <!-- Deployed services will appear here -->
             </div>
           </div>
         </div>
@@ -212,9 +309,6 @@
       <div
         class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-2 order-1 lg:order-2 relative overflow-hidden"
       >
-        <div id="game-phase" class="hidden"></div>
-
-        <!-- World Map View -->
         <div id="world-map-view" class="h-full">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold flex items-center">
@@ -286,6 +380,13 @@
             >
               Current Location: <span>Offline</span>
             </div>
+            <div
+              id="region-info"
+              class="absolute bottom-4 left-0 right-0 bg-gray-900 bg-opacity-80 px-4 py-2 rounded mx-4 hidden"
+            >
+              <h3 id="region-name" class="font-bold text-center"></h3>
+              <p id="region-description" class="text-xs text-center mt-1"></p>
+            </div>
           </div>
 
           <div id="location-controls" class="mt-4 flex justify-between hidden">
@@ -301,26 +402,38 @@
             >
               <i class="fas fa-search mr-2"></i> Investigate
             </button>
+            <button
+              id="service-scan-btn"
+              class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded flex items-center"
+            >
+              <i class="fas fa-network-wired mr-2"></i> Service Scan
+            </button>
           </div>
         </div>
 
-        <!-- FPS View -->
+        <!-- FPS Hacking View -->
         <div id="fps-view" class="hidden h-full relative">
           <div
-            class="absolute top-0 left-0 right-0 bg-gray-900 bg-opacity-80 p-2 flex justify-between"
+            class="absolute top-0 left-0 right-0 bg-gray-900 bg-opacity-80 p-2 flex justify-between items-center"
           >
-            <div id="hack-progress" class="w-full bg-gray-700 rounded h-4 mr-2">
+            <div class="w-full bg-gray-700 rounded h-4 mr-2">
               <div
                 id="hack-progress-bar"
                 class="bg-green-500 h-4 rounded"
                 style="width: 0%"
               ></div>
             </div>
-            <div
-              id="hack-timer"
-              class="bg-red-600 text-white px-2 py-1 rounded text-sm"
-            >
-              30s
+            <div class="flex items-center">
+              <span
+                id="hack-timer"
+                class="bg-red-600 text-white px-2 py-1 rounded text-sm mr-2"
+                >30s</span
+              >
+              <span
+                id="hack-score"
+                class="bg-blue-600 text-white px-2 py-1 rounded text-sm"
+                >0</span
+              >
             </div>
           </div>
           <div id="fps-targets" class="absolute inset-0">
@@ -328,14 +441,14 @@
           </div>
           <div
             id="terminal-screen"
-            class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-90 text-green-400 font-mono p-4 hidden overflow-y-auto"
+            class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-90 text-green-400 font-mono p-4 overflow-y-auto"
             style="max-height: 200px"
           >
             <!-- Terminal output will appear here -->
           </div>
         </div>
 
-        <!-- Oregon Trail-style Event View -->
+        <!-- Event View -->
         <div
           id="event-view"
           class="hidden h-full text-center flex flex-col items-center justify-center"
@@ -352,7 +465,7 @@
           </p>
           <div
             id="event-choices"
-            class="grid grid-cols-2 gap-3 w-full max-w-md"
+            class="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-md"
           >
             <!-- Choices will be added here dynamically -->
           </div>
@@ -360,7 +473,9 @@
       </div>
 
       <!-- Right Panel - Console and Clues -->
-      <div class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-1 order-3">
+      <div
+        class="bg-gray-800 rounded-lg p-4 shadow-lg lg:col-span-1 order-3 panel"
+      >
         <div class="mb-6">
           <h2 class="text-xl font-bold mb-2 flex items-center">
             <i class="fas fa-terminal mr-2 text-green-400"></i>
@@ -377,6 +492,7 @@
             </div>
             <div>> Welcome back, Agent. Systems nominal.</div>
             <div>> Last login: 47 minutes ago from unidentified terminal</div>
+            <div>> <span class="cursor-blink">_</span></div>
           </div>
           <div class="flex">
             <input
@@ -384,6 +500,7 @@
               id="console-input"
               class="flex-1 bg-gray-700 border border-gray-600 rounded-l px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-500"
               placeholder="Enter command..."
+              autocomplete="off"
             />
             <button
               title="Submit Command"
@@ -392,6 +509,9 @@
             >
               <i class="fas fa-arrow-right"></i>
             </button>
+          </div>
+          <div class="mt-2 text-xs text-gray-500">
+            Type <span class="text-green-400">help</span> for available commands
           </div>
         </div>
 
@@ -417,11 +537,28 @@
                 Unknown - begin investigation in AWS regions
               </p>
             </div>
-            <div>
+            <div id="clues-container">
               <h3 class="font-bold text-red-400 mb-1">CURRENT LEAD</h3>
               <p class="text-sm" id="current-lead">
                 No active leads - search for clues
               </p>
+              <div id="clues-list" class="mt-2 hidden">
+                <h4 class="text-xs font-semibold text-gray-400 mb-1">
+                  DISCOVERED CLUES:
+                </h4>
+                <ul
+                  id="clues-items"
+                  class="text-xs space-y-1 max-h-20 overflow-y-auto"
+                >
+                  <!-- Clues will be added here -->
+                </ul>
+              </div>
+              <button
+                id="toggle-clues"
+                class="mt-1 text-xs text-blue-400 hover:text-blue-300"
+              >
+                Show Clues (0)
+              </button>
             </div>
           </div>
         </div>
@@ -438,6 +575,7 @@
             >
               <i class="fas fa-server mb-1"></i>
               <span class="text-xs">EC2</span>
+              <span class="text-xxs text-gray-400">100 cr</span>
             </button>
             <button
               class="service-btn bg-yellow-700 hover:bg-yellow-800 p-2 rounded flex flex-col items-center justify-center"
@@ -445,6 +583,7 @@
             >
               <i class="fas fa-database mb-1"></i>
               <span class="text-xs">S3</span>
+              <span class="text-xxs text-gray-400">50 cr</span>
             </button>
             <button
               class="service-btn bg-green-700 hover:bg-green-800 p-2 rounded flex flex-col items-center justify-center"
@@ -452,6 +591,7 @@
             >
               <i class="fas fa-bolt mb-1"></i>
               <span class="text-xs">Lambda</span>
+              <span class="text-xxs text-gray-400">150 cr</span>
             </button>
             <button
               class="service-btn bg-red-700 hover:bg-red-800 p-2 rounded flex flex-col items-center justify-center"
@@ -459,6 +599,7 @@
             >
               <i class="fas fa-table mb-1"></i>
               <span class="text-xs">RDS</span>
+              <span class="text-xxs text-gray-400">200 cr</span>
             </button>
             <button
               class="service-btn bg-purple-700 hover:bg-purple-800 p-2 rounded flex flex-col items-center justify-center"
@@ -466,6 +607,7 @@
             >
               <i class="fas fa-network-wired mb-1"></i>
               <span class="text-xs">CloudFront</span>
+              <span class="text-xxs text-gray-400">175 cr</span>
             </button>
             <button
               class="service-btn bg-pink-700 hover:bg-pink-800 p-2 rounded flex flex-col items-center justify-center"
@@ -473,7 +615,13 @@
             >
               <i class="fas fa-list-alt mb-1"></i>
               <span class="text-xs">DynamoDB</span>
+              <span class="text-xxs text-gray-400">180 cr</span>
             </button>
+          </div>
+          <div class="mt-3 bg-gray-700 p-2 rounded text-center">
+            <span class="text-xs">CREDITS: </span>
+            <span id="available-credits" class="font-bold">500</span>
+            <span class="text-xs"> cr</span>
           </div>
         </div>
       </div>
@@ -509,7 +657,7 @@
         <div class="flex justify-center">
           <button
             id="start-game-btn"
-            class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold"
+            class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold opacity-50"
           >
             ACCEPT MISSION
           </button>
@@ -536,1532 +684,2835 @@
       </div>
     </div>
 
+    <div
+      id="game-over-modal"
+      class="modal-overlay fixed inset-0 flex items-center justify-center z-50 hidden"
+    >
+      <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="text-center mb-6">
+          <h1 id="game-over-title" class="text-3xl font-bold text-red-500 mb-2">
+            MISSION FAILED
+          </h1>
+          <p id="game-over-reason" class="text-lg">
+            Your AWS budget has been depleted.
+          </p>
+        </div>
+        <div
+          class="bg-black p-4 rounded mb-6 overflow-y-auto terminal-text max-h-48"
+        >
+          <div id="game-over-log"></div>
+        </div>
+        <div class="flex justify-center">
+          <button
+            id="restart-game-btn"
+            class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold"
+          >
+            RETRY MISSION
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="win-modal"
+      class="modal-overlay fixed inset-0 flex items-center justify-center z-50 hidden"
+    >
+      <div class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6">
+        <div class="text-center mb-6">
+          <h1 class="text-3xl font-bold text-green-400 mb-2">
+            MISSION ACCOMPLISHED
+          </h1>
+          <p class="text-xl">Dr. ███████ has been rescued!</p>
+        </div>
+        <div
+          class="bg-black p-4 rounded mb-6 overflow-y-auto terminal-text max-h-48"
+        >
+          <div id="win-log"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div class="bg-gray-700 p-4 rounded">
+            <h3 class="font-bold text-center mb-2">FINAL STATS</h3>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="text-sm">Level:</div>
+              <div class="text-right font-bold" id="win-level">1</div>
+              <div class="text-sm">Days Elapsed:</div>
+              <div class="text-right font-bold" id="win-days">1</div>
+              <div class="text-sm">Credits:</div>
+              <div class="text-right font-bold" id="win-credits">500</div>
+              <div class="text-sm">AWS Certs:</div>
+              <div class="text-right font-bold" id="win-certs">0</div>
+            </div>
+          </div>
+          <div class="bg-gray-700 p-4 rounded">
+            <h3 class="font-bold text-center mb-2">ARCHITECTURE</h3>
+            <div id="win-services" class="text-xs text-center">
+              <!-- Services will be listed here -->
+            </div>
+            <div class="mt-2 text-center">
+              <span class="text-sm">Score: </span>
+              <span id="win-score" class="font-bold">0</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-center">
+          <button
+            id="win-restart-btn"
+            class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-bold"
+          >
+            NEW MISSION
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
-      // Game State
-      const gameState = {
-        phase: "start", // start, world, fps, event
-        player: {
-          name: "AGENT_███████",
-          level: 1,
-          xp: 0,
-          health: 100,
-          maxHealth: 100,
-          credits: 500,
-          certs: 0,
-          location: null,
-          visitedRegions: [],
-          resources: {
-            ec2: 1,
-            s3: 0,
-            lambda: 0,
-            rds: 0,
-            cloudfront: 0,
-            dynamodb: 0,
+      // =============================================
+      // GAME STATE MANAGEMENT MODULE
+      // =============================================
+      const GameState = (function () {
+        // Private state
+        let state = {
+          phase: "start", // start, world, fps, event, gameover, win
+          player: {
+            name: "AGENT_███████",
+            level: 1,
+            xp: 0,
+            health: 100,
+            maxHealth: 100,
+            credits: 500,
+            certs: 0,
+            location: null,
+            visitedRegions: [],
+            resources: {
+              ec2: 1,
+              s3: 0,
+              lambda: 0,
+              rds: 0,
+              cloudfront: 0,
+              dynamodb: 0,
+            },
+            deployedServices: [],
           },
-          deployedServices: [],
-        },
-        case: {
-          objective:
-            "Locate the missing AWS Architect Dr. ███████ who disappeared while investigating irregularities in global cloud infrastructure.",
-          lastCoordinates: "Unknown - begin investigation in AWS regions",
-          currentLead: "No active leads - search for clues",
-          clues: [],
-          targetRegion: null,
-          daysElapsed: 0,
-          gameTime: 0,
-        },
-        currentEvent: null,
-        fpsGame: {
-          active: false,
-          targets: [],
-          score: 0,
-          timeLeft: 30,
-          interval: null,
-          difficulty: 1,
-          serviceBeingHacked: null,
-        },
-        terminal: {
-          history: [],
-          commands: [
-            "help",
-            "status",
-            "deploy",
-            "scan",
-            "investigate",
-            "travel",
-          ],
-        },
-      };
+          case: {
+            objective:
+              "Locate the missing AWS Architect Dr. ███████ who disappeared while investigating irregularities in global cloud infrastructure.",
+            lastCoordinates: "Unknown - begin investigation in AWS regions",
+            currentLead: "No active leads - search for clues",
+            clues: [],
+            targetRegion: null,
+            daysElapsed: 0,
+            gameTime: 0,
+          },
+          currentEvent: null,
+          fpsGame: {
+            active: false,
+            targets: [],
+            score: 0,
+            timeLeft: 30,
+            interval: null,
+            difficulty: 1,
+            serviceBeingHacked: null,
+          },
+          terminal: {
+            history: [],
+            commands: [
+              "help",
+              "status",
+              "deploy",
+              "scan",
+              "investigate",
+              "travel",
+            ],
+          },
+          debug: false,
+        };
 
-      // AWS Services Data
-      const awsServices = {
-        ec2: {
-          name: "Amazon EC2",
-          description:
-            "Elastic Compute Cloud provides scalable computing capacity in the AWS cloud.",
-          use: "Host your applications and workloads on virtual servers.",
-          security: 2,
-          performance: 3,
-          scalability: 4,
-          cost: 3,
-          price: 100,
-        },
-        s3: {
-          name: "Amazon S3",
-          description:
-            "Simple Storage Service offers industry-leading scalability, data availability, security, and performance.",
-          use: "Store and retrieve any amount of data from anywhere on the web.",
-          security: 4,
-          performance: 3,
-          scalability: 5,
-          cost: 1,
-          price: 50,
-        },
-        lambda: {
-          name: "AWS Lambda",
-          description:
-            "Run code without provisioning or managing servers. You pay only for the compute time you consume.",
-          use: "Run backend code in response to events or HTTP requests.",
-          security: 3,
-          performance: 2,
-          scalability: 5,
-          cost: 2,
-          price: 150,
-        },
-        rds: {
-          name: "Amazon RDS",
-          description:
-            "Relational Database Service makes it easy to set up, operate, and scale a relational database in the cloud.",
-          use: "Managed relational database service for MySQL, PostgreSQL, etc.",
-          security: 4,
-          performance: 4,
-          scalability: 3,
-          cost: 4,
-          price: 200,
-        },
-        cloudfront: {
-          name: "Amazon CloudFront",
-          description:
-            "Content delivery network (CDN) service that delivers data, videos, applications, and APIs to users globally.",
-          use: "Distribute content globally with low latency and high transfer speeds.",
-          security: 3,
-          performance: 5,
-          scalability: 5,
-          cost: 3,
-          price: 175,
-        },
-        dynamodb: {
-          name: "Amazon DynamoDB",
-          description:
-            "Fully managed NoSQL database service that provides fast and predictable performance with seamless scalability.",
-          use: "Managed NoSQL database for applications that need consistent, single-digit millisecond latency.",
-          security: 3,
-          performance: 5,
-          scalability: 5,
-          cost: 3,
-          price: 180,
-        },
-      };
+        // Public API
+        return {
+          getPhase: () => state.phase,
+          setPhase: (newPhase) => {
+            state.phase = newPhase;
+          },
 
-      // AWS Regions
-      const awsRegions = {
-        "us-east-1": {
-          name: "US East (N. Virginia)",
-          description: "The first AWS region, home to many major services.",
-          color: "#3B82F6",
-          events: [
-            "The logs show unusual API calls to EC2 instances around the time of Dr. ███████'s disappearance.",
-            "AWS Support reports abnormal latency spikes in this region during the investigation period.",
-          ],
-          secret:
-            "Hidden in plain sight - check the logs for 'overwatch' entries.",
-        },
-        "us-east-2": {
-          name: "US East (Ohio)",
-          description:
-            "A newer US region with lower latency for midwestern customers.",
-          color: "#3B82F6",
-          events: [
-            "An EC2 instance tagged with 'RESEARCH' was terminated abruptly 36 hours after deployment.",
-            "CloudTrail shows unauthorized access attempts from an unfamiliar IAM user.",
-          ],
-          secret: "Look for the S3 bucket named 'quantum-backup-███'",
-        },
-        "us-west-2": {
-          name: "US West (Oregon)",
-          description:
-            "AWS's largest region with extensive service availability.",
-          color: "#3B82F6",
-          events: [
-            "Lambda function execution patterns show algorithmic anomalies matching Dr. ███████'s research notes.",
-            "A network ACL was changed to allow inbound traffic from an unusual IP range.",
-          ],
-          secret: "The key is in the DynamoDB table named 'Drift_Sequence'",
-        },
-        "eu-west-1": {
-          name: "EU (Ireland)",
-          description:
-            "The first AWS region in Europe, serving international customers.",
-          color: "#10B981",
-          events: [
-            "An S3 bucket containing architectural diagrams was made public then quickly deleted.",
-            "Unusual spikes in data transfer to CloudFront distributions during off-peak hours.",
-          ],
-          secret: "Find the hidden ELB listener on port 31415",
-        },
-        "eu-central-1": {
-          name: "EU (Frankfurt)",
-          description:
-            "A major European region with strong data sovereignty guarantees.",
-          color: "#10B981",
-          events: [
-            "RDS instance logs show queries matching Dr. ███████'s last known research project.",
-            "VPC flow logs indicate covert data exfiltration via DNS tunneling.",
-          ],
-          secret:
-            "SSM Parameter Store holds the coordinates under '/quantum/location'",
-        },
-        "ap-northeast-1": {
-          name: "Asia Pacific (Tokyo)",
-          description: "AWS region serving the high-tech Japanese market.",
-          color: "#EF4444",
-          events: [
-            "A DynamoDB table was exported just minutes before security lockdowns began.",
-            "EC2 Spot Instance usage spiked anomalously, indicating possible compute-intensive work.",
-          ],
-          secret: "The API Gateway has a hidden route at /v2/quantum",
-        },
-        "ap-southeast-1": {
-          name: "Asia Pacific (Singapore)",
-          description: "Major APAC region with extensive connectivity.",
-          color: "#EF4444",
-          events: [
-            "CloudWatch alarms were disabled on multiple services during the critical period.",
-            "An EBS snapshot was shared with an external AWS account then revoked.",
-          ],
-          secret: "Decrypt the KMS key with alias 'quantum_keyring'",
-        },
-        "ap-southeast-2": {
-          name: "Asia Pacific (Sydney)",
-          description:
-            "AWS region serving Australian and New Zealand customers.",
-          color: "#EF4444",
-          events: [
-            "AWS Config shows abrupt IAM permission changes to several critical roles.",
-            "Route 53 hosted zone queries reveal DNS lookups for obscure subdomains.",
-          ],
-          secret: "The CloudFormation stack 'DriftMonitor' has the evidence",
-        },
-        "sa-east-1": {
-          name: "South America (São Paulo)",
-          description: "The only AWS region in South America.",
-          color: "#F59E0B",
-          events: [
-            "An unusual Lambda function with encrypted environment variables was deployed then removed.",
-            "SQS queues show message patterns matching quantum algorithm signatures.",
-          ],
-          secret: "The X-Ray trace group 'QuantumPath' holds answers",
-        },
-      };
+          getPlayer: () => state.player,
+          updatePlayer: (updates) => {
+            Object.assign(state.player, updates);
+          },
 
-      // Random Events
-      const randomEvents = [
-        {
-          title: "Security Breach Attempt",
-          description:
-            "Your deployment is under attack! AWS Shield has detected a DDoS attempt.",
-          choices: [
-            {
-              text: "Deploy AWS WAF rules (Cost: 50 credits)",
-              outcome: "Successfully mitigated attack. Security +2",
-              action: function () {
-                if (gameState.player.credits >= 50) {
-                  gameState.player.credits -= 50;
-                  const currentSecurity = parseInt(
-                    document.getElementById("security-level").textContent
-                  );
-                  document.getElementById("security-level").textContent =
-                    currentSecurity + 2;
-                  return "Attack mitigated. System secured.";
-                } else {
-                  return "Not enough credits. Security compromised. Health -10";
-                }
-              },
-            },
-            {
-              text: "Scale up resources to absorb attack (Cost: 100 credits)",
-              outcome:
-                "Handled attack but at higher cost. Performance +3, Scalability +1",
-              action: function () {
-                if (gameState.player.credits >= 100) {
-                  gameState.player.credits -= 100;
-                  const currentPerformance = parseInt(
-                    document.getElementById("performance-level").textContent
-                  );
-                  const currentScalability = parseInt(
-                    document.getElementById("scalability-level").textContent
-                  );
-                  document.getElementById("performance-level").textContent =
-                    currentPerformance + 3;
-                  document.getElementById("scalability-level").textContent =
-                    currentScalability + 1;
-                  return "Successfully scaled to handle attack traffic.";
-                } else {
-                  return "Not enough credits. System overloaded. Health -20";
-                }
-              },
-            },
-            {
-              text: "Ignore and hope it passes",
-              outcome: "Risky but costs nothing.",
-              action: function () {
-                const random = Math.random();
-                if (random > 0.7) {
-                  gameState.player.health -= 15;
-                  return "Attack caused significant damage. Health -15";
-                } else {
-                  return "Attack subsided on its own.";
-                }
-              },
-            },
-          ],
-        },
-        {
-          title: "Performance Issue",
-          description:
-            "Users are complaining about slow response times from your application.",
-          choices: [
-            {
-              text: "Optimize database queries (Cost: 30 credits, requires RDS)",
-              outcome: "Performance +2, Cost Opt +1",
-              action: function () {
-                if (
-                  gameState.player.credits >= 30 &&
-                  gameState.player.resources.rds > 0
-                ) {
-                  gameState.player.credits -= 30;
-                  const currentPerformance = parseInt(
-                    document.getElementById("performance-level").textContent
-                  );
-                  const currentCost = parseInt(
-                    document.getElementById("cost-level").textContent
-                  );
-                  document.getElementById("performance-level").textContent =
-                    currentPerformance + 2;
-                  document.getElementById("cost-level").textContent =
-                    currentCost + 1;
-                  return "Query optimization successful. Performance improved.";
-                } else if (gameState.player.resources.rds === 0) {
-                  return "You don't have RDS deployed! Can't optimize queries. Performance -1";
-                } else {
-                  return "Not enough credits. Performance issues persist. Health -5";
-                }
-              },
-            },
-            {
-              text: "Add CloudFront CDN (Cost: 75 credits)",
-              outcome: "Performance +4, adds CloudFront to inventory",
-              action: function () {
-                if (gameState.player.credits >= 75) {
-                  gameState.player.credits -= 75;
-                  gameState.player.resources.cloudfront += 1;
-                  const currentPerformance = parseInt(
-                    document.getElementById("performance-level").textContent
-                  );
-                  document.getElementById("performance-level").textContent =
-                    currentPerformance + 4;
-                  updateInventory();
-                  return "CloudFront deployed. Performance significantly improved.";
-                } else {
-                  return "Not enough credits. Performance issues persist. Health -5";
-                }
-              },
-            },
-            {
-              text: "Do nothing",
-              outcome: "Users remain unhappy.",
-              action: function () {
-                return "Performance issues continue. Health -5";
-              },
-            },
-          ],
-        },
-        {
-          title: "Cost Review",
-          description: "Your AWS bill is higher than expected this month.",
-          choices: [
-            {
-              text: "Implement cost-saving measures (Cost: 40 credits)",
-              outcome: "Cost Opt +3, may impact performance",
-              action: function () {
-                if (gameState.player.credits >= 40) {
-                  gameState.player.credits -= 40;
-                  const currentCost = parseInt(
-                    document.getElementById("cost-level").textContent
-                  );
-                  document.getElementById("cost-level").textContent =
-                    currentCost + 3;
+          getCase: () => state.case,
+          updateCase: (updates) => {
+            Object.assign(state.case, updates);
+          },
 
-                  // Small chance performance is affected
-                  if (Math.random() > 0.8) {
-                    const currentPerformance = parseInt(
-                      document.getElementById("performance-level").textContent
-                    );
-                    document.getElementById("performance-level").textContent =
-                      Math.max(0, currentPerformance - 1);
-                    return "Costs optimized but with slight performance impact.";
-                  }
-                  return "Cost saving measures implemented successfully.";
-                } else {
-                  return "Not enough credits. Costs remain high. Health -5";
-                }
+          getFpsGame: () => state.fpsGame,
+          updateFpsGame: (updates) => {
+            Object.assign(state.fpsGame, updates);
+          },
+
+          getCurrentEvent: () => state.currentEvent,
+          setCurrentEvent: (event) => {
+            state.currentEvent = event;
+          },
+
+          addTerminalHistory: (text) => {
+            state.terminal.history.push(text);
+          },
+          getTerminalHistory: () => state.terminal.history,
+
+          toggleDebug: () => {
+            state.debug = !state.debug;
+          },
+          isDebug: () => state.debug,
+
+          reset: () => {
+            state = {
+              phase: "start",
+              player: {
+                name: "AGENT_███████",
+                level: 1,
+                xp: 0,
+                health: 100,
+                maxHealth: 100,
+                credits: 500,
+                certs: 0,
+                location: null,
+                visitedRegions: [],
+                resources: {
+                  ec2: 1,
+                  s3: 0,
+                  lambda: 0,
+                  rds: 0,
+                  cloudfront: 0,
+                  dynamodb: 0,
+                },
+                deployedServices: [],
               },
-            },
-            {
-              text: "Purchase Reserved Instances (Cost: 150 credits)",
-              outcome: "Cost Opt +5, long-term savings",
-              action: function () {
-                if (gameState.player.credits >= 150) {
-                  gameState.player.credits -= 150;
-                  const currentCost = parseInt(
-                    document.getElementById("cost-level").textContent
-                  );
-                  document.getElementById("cost-level").textContent =
-                    currentCost + 5;
-                  return "Reserved Instances purchased. Significant long-term savings.";
-                } else {
-                  return "Not enough credits. Costs remain high. Health -10";
-                }
+              case: {
+                objective:
+                  "Locate the missing AWS Architect Dr. ███████ who disappeared while investigating irregularities in global cloud infrastructure.",
+                lastCoordinates: "Unknown - begin investigation in AWS regions",
+                currentLead: "No active leads - search for clues",
+                clues: [],
+                targetRegion: null,
+                daysElapsed: 0,
+                gameTime: 0,
               },
-            },
-            {
-              text: "Ignore the bill",
-              outcome: "Credits will be deducted automatically",
-              action: function () {
-                const penalty = Math.floor(gameState.player.credits * 0.1);
-                gameState.player.credits -= penalty;
-                return `Auto-deducted ${penalty} credits for AWS bill payment.`;
+              currentEvent: null,
+              fpsGame: {
+                active: false,
+                targets: [],
+                score: 0,
+                timeLeft: 30,
+                interval: null,
+                difficulty: 1,
+                serviceBeingHacked: null,
               },
-            },
-          ],
-        },
-        {
-          title: "Clue Discovery",
-          description:
-            "While reviewing logs, you find an anomalous entry that might relate to Dr. ███████'s disappearance.",
-          choices: [
-            {
-              text: "Investigate thoroughly (Cost: 25 credits)",
-              outcome: "May find valuable clues",
-              action: function () {
-                if (gameState.player.credits >= 25) {
-                  gameState.player.credits -= 25;
-                  // 70% chance of finding a clue
-                  if (Math.random() > 0.3) {
-                    const clue = getRandomClue();
-                    gameState.case.clues.push(clue);
-                    return `Clue discovered: ${clue}`;
+              terminal: {
+                history: [],
+                commands: [
+                  "help",
+                  "status",
+                  "deploy",
+                  "scan",
+                  "investigate",
+                  "travel",
+                ],
+              },
+              debug: false,
+            };
+          },
+        };
+      })();
+
+      // =============================================
+      // DATA MODULES
+      // =============================================
+      const AWSData = (function () {
+        const services = {
+          ec2: {
+            name: "Amazon EC2",
+            description:
+              "Elastic Compute Cloud provides scalable computing capacity in the AWS cloud.",
+            use: "Host your applications and workloads on virtual servers.",
+            security: 2,
+            performance: 3,
+            scalability: 4,
+            cost: 3,
+            price: 100,
+            icon: "fa-server",
+            color: "blue",
+          },
+          s3: {
+            name: "Amazon S3",
+            description:
+              "Simple Storage Service offers industry-leading scalability, data availability, security, and performance.",
+            use: "Store and retrieve any amount of data from anywhere on the web.",
+            security: 4,
+            performance: 3,
+            scalability: 5,
+            cost: 1,
+            price: 50,
+            icon: "fa-database",
+            color: "yellow",
+          },
+          lambda: {
+            name: "AWS Lambda",
+            description:
+              "Run code without provisioning or managing servers. You pay only for the compute time you consume.",
+            use: "Run backend code in response to events or HTTP requests.",
+            security: 3,
+            performance: 2,
+            scalability: 5,
+            cost: 2,
+            price: 150,
+            icon: "fa-bolt",
+            color: "green",
+          },
+          rds: {
+            name: "Amazon RDS",
+            description:
+              "Relational Database Service makes it easy to set up, operate, and scale a relational database in the cloud.",
+            use: "Managed relational database service for MySQL, PostgreSQL, etc.",
+            security: 4,
+            performance: 4,
+            scalability: 3,
+            cost: 4,
+            price: 200,
+            icon: "fa-table",
+            color: "red",
+          },
+          cloudfront: {
+            name: "Amazon CloudFront",
+            description:
+              "Content delivery network (CDN) service that delivers data, videos, applications, and APIs to users globally.",
+            use: "Distribute content globally with low latency and high transfer speeds.",
+            security: 3,
+            performance: 5,
+            scalability: 5,
+            cost: 3,
+            price: 175,
+            icon: "fa-network-wired",
+            color: "purple",
+          },
+          dynamodb: {
+            name: "Amazon DynamoDB",
+            description:
+              "Fully managed NoSQL database service that provides fast and predictable performance with seamless scalability.",
+            use: "Managed NoSQL database for applications that need consistent, single-digit millisecond latency.",
+            security: 3,
+            performance: 5,
+            scalability: 5,
+            cost: 3,
+            price: 180,
+            icon: "fa-list-alt",
+            color: "pink",
+          },
+        };
+
+        const regions = {
+          "us-east-1": {
+            name: "US East (N. Virginia)",
+            description: "The first AWS region, home to many major services.",
+            color: "#3B82F6",
+            events: [
+              "The logs show unusual API calls to EC2 instances around the time of Dr. ███████'s disappearance.",
+              "AWS Support reports abnormal latency spikes in this region during the investigation period.",
+              "An unusual number of Spot Instance interruptions occurred during critical hours.",
+              "VPC flow logs show unexpected data transfers to unknown IP ranges.",
+            ],
+            secret:
+              "Hidden in plain sight - check the logs for 'overwatch' entries.",
+            difficulty: 1,
+          },
+          "us-east-2": {
+            name: "US East (Ohio)",
+            description:
+              "A newer US region with lower latency for midwestern customers.",
+            color: "#3B82F6",
+            events: [
+              "An EC2 instance tagged with 'RESEARCH' was terminated abruptly 36 hours after deployment.",
+              "CloudTrail shows unauthorized access attempts from an unfamiliar IAM user.",
+              "EC2 instance metadata shows unexpected configuration changes.",
+              "Systems Manager session logs contain encrypted commands with quantum algorithm signatures.",
+            ],
+            secret: "Look for the S3 bucket named 'quantum-backup-███'",
+            difficulty: 2,
+          },
+          "us-west-2": {
+            name: "US West (Oregon)",
+            description:
+              "AWS's largest region with extensive service availability.",
+            color: "#3B82F6",
+            events: [
+              "Lambda function execution patterns show algorithmic anomalies matching Dr. ███████'s research notes.",
+              "A network ACL was changed to allow inbound traffic from an unusual IP range.",
+              "GuardDuty detected unusual API calls from within the region itself.",
+              "CloudFormation stack parameters were modified post-deployment without audit trails.",
+            ],
+            secret: "The key is in the DynamoDB table named 'Drift_Sequence'",
+            difficulty: 2,
+          },
+          "eu-west-1": {
+            name: "EU (Ireland)",
+            description:
+              "The first AWS region in Europe, serving international customers.",
+            color: "#10B981",
+            events: [
+              "An S3 bucket containing architectural diagrams was made public then quickly deleted.",
+              "Unusual spikes in data transfer to CloudFront distributions during off-peak hours.",
+              "IAM role permissions were escalated temporarily then reverted.",
+              "Lambda environment variables contain base64-encoded quantum state vectors.",
+            ],
+            secret: "Find the hidden ELB listener on port 31415",
+            difficulty: 3,
+          },
+          "eu-central-1": {
+            name: "EU (Frankfurt)",
+            description:
+              "A major European region with strong data sovereignty guarantees.",
+            color: "#10B981",
+            events: [
+              "RDS instance logs show queries matching Dr. ███████'s last known research project.",
+              "VPC flow logs indicate covert data exfiltration via DNS tunneling.",
+              "ECS task definitions contain encoded instructions in environment variables.",
+              "KMS key policies were modified to allow access from an unknown AWS account.",
+            ],
+            secret:
+              "SSM Parameter Store holds the coordinates under '/quantum/location'",
+            difficulty: 3,
+          },
+          "ap-northeast-1": {
+            name: "Asia Pacific (Tokyo)",
+            description: "AWS region serving the high-tech Japanese market.",
+            color: "#EF4444",
+            events: [
+              "A DynamoDB table was exported just minutes before security lockdowns began.",
+              "EC2 Spot Instance usage spiked anomalously, indicating possible compute-intensive work.",
+              "CloudWatch log groups show patterns matching quantum decoherence calculations.",
+              "Athena query results contain hexadecimal sequences that decode to coordinate data.",
+            ],
+            secret: "The API Gateway has a hidden route at /v2/quantum",
+            difficulty: 4,
+          },
+          "ap-southeast-1": {
+            name: "Asia Pacific (Singapore)",
+            description: "Major APAC region with extensive connectivity.",
+            color: "#EF4444",
+            events: [
+              "CloudWatch alarms were disabled on multiple services during the critical period.",
+              "An EBS snapshot was shared with an external AWS account then revoked.",
+              "Redshift queries contain encoded quantum circuit diagrams.",
+              "Step Function execution logs show state transitions that violate known physical laws.",
+            ],
+            secret: "Decrypt the KMS key with alias 'quantum_keyring'",
+            difficulty: 4,
+          },
+          "ap-southeast-2": {
+            name: "Asia Pacific (Sydney)",
+            description:
+              "AWS region serving Australian and New Zealand customers.",
+            color: "#EF4444",
+            events: [
+              "AWS Config shows abrupt IAM permission changes to several critical roles.",
+              "Route 53 hosted zone queries reveal DNS lookups for obscure subdomains.",
+              "CloudTrail logs show API calls from a revoked IAM user.",
+              "SQS message attributes contain quantum entanglement measurements.",
+            ],
+            secret: "The CloudFormation stack 'DriftMonitor' has the evidence",
+            difficulty: 5,
+          },
+          "sa-east-1": {
+            name: "South America (São Paulo)",
+            description: "The only AWS region in South America.",
+            color: "#F59E0B",
+            events: [
+              "An unusual Lambda function with encrypted environment variables was deployed then removed.",
+              "SQS queues show message patterns matching quantum algorithm signatures.",
+              "Security Hub findings correlate with theoretical quantum computation anomalies.",
+              "Firehose delivery streams contain base64-encoded quantum state collapses.",
+            ],
+            secret: "The X-Ray trace group 'QuantumPath' holds answers",
+            difficulty: 5,
+          },
+        };
+
+        const randomEvents = [
+          {
+            title: "Security Breach Attempt",
+            description:
+              "Your deployment is under attack! AWS Shield has detected a DDoS attempt.",
+            image: "fa-shield-alt",
+            color: "yellow",
+            choices: [
+              {
+                text: "Deploy AWS WAF rules (50 credits)",
+                outcome: "Successfully mitigated attack. Security +2",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 50) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 50,
+                    });
+                    return {
+                      success: true,
+                      message: "Attack mitigated. System secured.",
+                      effects: { security: 2 },
+                    };
                   } else {
-                    return "Thorough investigation revealed nothing unusual.";
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Security compromised. Health -10",
+                      effects: { health: -10 },
+                    };
                   }
-                } else {
-                  return "Not enough credits to conduct investigation.";
-                }
+                },
               },
-            },
-            {
-              text: "Quick scan (Cost: 10 credits)",
-              outcome: "Small chance of finding clues",
-              action: function () {
-                if (gameState.player.credits >= 10) {
-                  gameState.player.credits -= 10;
-                  // 30% chance of finding a clue
-                  if (Math.random() > 0.7) {
-                    const clue = getRandomClue();
-                    gameState.case.clues.push(clue);
-                    return `Clue discovered: ${clue}`;
+              {
+                text: "Scale up resources (100 credits)",
+                outcome:
+                  "Handled attack but at higher cost. Performance +3, Scalability +1",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 100) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 100,
+                    });
+                    return {
+                      success: true,
+                      message: "Successfully scaled to handle attack traffic.",
+                      effects: { performance: 3, scalability: 1 },
+                    };
                   } else {
-                    return "Quick scan didn't reveal anything noteworthy.";
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. System overloaded. Health -20",
+                      effects: { health: -20 },
+                    };
                   }
-                } else {
-                  return "Not enough credits to conduct scan.";
-                }
+                },
               },
-            },
-            {
-              text: "Mark for later review",
-              outcome: "No cost, no progress",
-              action: function () {
-                return "Logged for future investigation.";
+              {
+                text: "Ignore and hope it passes",
+                outcome: "Risky but costs nothing.",
+                action: function () {
+                  const random = Math.random();
+                  return random > 0.7
+                    ? {
+                        success: false,
+                        message: "Attack caused significant damage. Health -15",
+                        effects: { health: -15 },
+                      }
+                    : {
+                        success: true,
+                        message: "Attack subsided on its own.",
+                        effects: {},
+                      };
+                },
               },
-            },
-          ],
-        },
-      ];
+            ],
+          },
+          {
+            title: "Performance Issue",
+            description:
+              "Users are complaining about slow response times from your application.",
+            image: "fa-tachometer-alt",
+            color: "green",
+            choices: [
+              {
+                text: "Optimize database queries (30 credits, requires RDS)",
+                outcome: "Performance +2, Cost Opt +1",
+                action: function () {
+                  const player = GameState.getPlayer();
+                  if (player.credits >= 30 && player.resources.rds > 0) {
+                    GameState.updatePlayer({ credits: player.credits - 30 });
+                    return {
+                      success: true,
+                      message:
+                        "Query optimization successful. Performance improved.",
+                      effects: { performance: 2, cost: 1 },
+                    };
+                  } else if (player.resources.rds === 0) {
+                    return {
+                      success: false,
+                      message:
+                        "You don't have RDS deployed! Can't optimize queries. Performance -1",
+                      effects: { performance: -1 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Performance issues persist. Health -5",
+                      effects: { health: -5 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Add CloudFront CDN (75 credits)",
+                outcome: "Performance +4, adds CloudFront to inventory",
+                action: function () {
+                  const player = GameState.getPlayer();
+                  if (player.credits >= 75) {
+                    GameState.updatePlayer({
+                      credits: player.credits - 75,
+                      resources: {
+                        ...player.resources,
+                        cloudfront: player.resources.cloudfront + 1,
+                      },
+                    });
+                    if (!player.deployedServices.includes("cloudfront")) {
+                      GameState.updatePlayer({
+                        deployedServices: [
+                          ...player.deployedServices,
+                          "cloudfront",
+                        ],
+                      });
+                    }
+                    return {
+                      success: true,
+                      message:
+                        "CloudFront deployed. Performance significantly improved.",
+                      effects: { performance: 4 },
+                      newService: "cloudfront",
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Performance issues persist. Health -5",
+                      effects: { health: -5 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Do nothing",
+                outcome: "Users remain unhappy.",
+                action: function () {
+                  return {
+                    success: false,
+                    message: "Performance issues continue. Health -5",
+                    effects: { health: -5 },
+                  };
+                },
+              },
+            ],
+          },
+          {
+            title: "Cost Review",
+            description: "Your AWS bill is higher than expected this month.",
+            image: "fa-dollar-sign",
+            color: "blue",
+            choices: [
+              {
+                text: "Implement cost-saving measures (40 credits)",
+                outcome: "Cost Opt +3, may impact performance",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 40) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 40,
+                    });
+                    let result = {
+                      success: true,
+                      message: "Cost saving measures implemented successfully.",
+                      effects: { cost: 3 },
+                    };
 
-      // Game Functions
-      function startGame() {
-        document.getElementById("start-modal").classList.add("hidden");
-        document.getElementById("world-map-view").classList.remove("hidden");
-        gameState.phase = "world";
+                    // Small chance performance is affected
+                    if (Math.random() > 0.8) {
+                      result.effects.performance = -1;
+                      result.message =
+                        "Costs optimized but with slight performance impact.";
+                    }
+                    return result;
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Costs remain high. Health -5",
+                      effects: { health: -5 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Purchase Reserved Instances (150 credits)",
+                outcome: "Cost Opt +5, long-term savings",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 150) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 150,
+                    });
+                    return {
+                      success: true,
+                      message:
+                        "Reserved Instances purchased. Significant long-term savings.",
+                      effects: { cost: 5 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Costs remain high. Health -10",
+                      effects: { health: -10 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Ignore the bill",
+                outcome: "Credits will be deducted automatically",
+                action: function () {
+                  const penalty = Math.floor(
+                    GameState.getPlayer().credits * 0.1
+                  );
+                  GameState.updatePlayer({
+                    credits: GameState.getPlayer().credits - penalty,
+                  });
+                  return {
+                    success: false,
+                    message: `Auto-deducted ${penalty} credits for AWS bill payment.`,
+                    effects: {},
+                  };
+                },
+              },
+            ],
+          },
+          {
+            title: "Security Audit Findings",
+            description:
+              "AWS Security Hub has identified several critical vulnerabilities in your architecture.",
+            image: "fa-user-shield",
+            color: "red",
+            choices: [
+              {
+                text: "Remediate all findings (80 credits)",
+                outcome: "Security +4, Performance -1",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 80) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 80,
+                    });
+                    return {
+                      success: true,
+                      message: "All vulnerabilities successfully patched.",
+                      effects: { security: 4, performance: -1 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Vulnerabilities remain. Health -15",
+                      effects: { health: -15 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Prioritize critical fixes (40 credits)",
+                outcome: "Security +2",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 40) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 40,
+                    });
+                    return {
+                      success: true,
+                      message: "Critical vulnerabilities addressed.",
+                      effects: { security: 2 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Critical vulnerabilities remain. Health -10",
+                      effects: { health: -10 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Request exception (20 credits)",
+                outcome: "Security -1, temporary fix",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 20) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 20,
+                    });
+                    return {
+                      success: true,
+                      message:
+                        "Temporary exception granted - vulnerabilities remain.",
+                      effects: { security: -1 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Compliance failure. Health -10, Security -2",
+                      effects: { health: -10, security: -2 },
+                    };
+                  }
+                },
+              },
+            ],
+          },
+          {
+            title: "Clue Discovery",
+            description:
+              "While reviewing logs, you find an anomalous entry that might relate to Dr. ███████'s disappearance.",
+            image: "fa-search",
+            color: "purple",
+            choices: [
+              {
+                text: "Investigate thoroughly (25 credits)",
+                outcome: "70% chance of finding valuable clues",
+                action: function () {
+                  const player = GameState.getPlayer();
+                  if (player.credits >= 25) {
+                    GameState.updatePlayer({ credits: player.credits - 25 });
 
-        // Animate mission briefing
-        const briefing =
-          "> MISSION BRIEFING:\n> Dr. Linda ███████, top AWS Certified Solutions Architect, vanished while investigating \n> quantum computing anomalies in AWS Global Infrastructure. Your task: follow her \n> trail through AWS regions, gather clues from cloud services, and uncover the truth \n> behind her disappearance. Beware of hostile entities monitoring the network.\n> Good luck, Agent.";
-        typeWriter(
-          document.getElementById("mission-briefing"),
-          briefing,
-          20,
-          () => {
-            document
-              .getElementById("start-game-btn")
-              .classList.remove("opacity-50");
-          }
-        );
+                    // 70% chance of finding a clue
+                    if (Math.random() > 0.3) {
+                      const clue = getRandomClue();
+                      const caseData = GameState.getCase();
+                      GameState.updateCase({
+                        clues: [...caseData.clues, clue],
+                      });
 
-        // Start game clock
-        setInterval(advanceGameTime, 30000); // Every 30 seconds = 1 hour game time
-      }
+                      // Check if this is the target region
+                      if (
+                        !caseData.targetRegion &&
+                        Math.random() > 0.8 &&
+                        player.location
+                      ) {
+                        GameState.updateCase({
+                          targetRegion: player.location,
+                          currentLead: `Strong evidence points to ${
+                            getRegionInfo(player.location).name
+                          }. Investigate thoroughly!`,
+                        });
+                        return {
+                          success: true,
+                          message: `CRITICAL CLUE DISCOVERED: ${clue}\nThis region may hold the key to Dr. ███████'s location!`,
+                          effects: {},
+                          criticalClue: true,
+                        };
+                      }
 
-      function travelToRegion(regionId) {
-        if (!gameState.player.location) {
-          // First deployment
-          gameState.player.location = regionId;
-          gameState.player.visitedRegions.push(regionId);
+                      return {
+                        success: true,
+                        message: `Clue discovered: ${clue}`,
+                        effects: {},
+                        newClue: clue,
+                      };
+                    } else {
+                      return {
+                        success: true,
+                        message:
+                          "Thorough investigation revealed nothing unusual.",
+                        effects: {},
+                      };
+                    }
+                  } else {
+                    return {
+                      success: false,
+                      message: "Not enough credits to conduct investigation.",
+                      effects: {},
+                    };
+                  }
+                },
+              },
+              {
+                text: "Quick scan (10 credits)",
+                outcome: "30% chance of finding clues",
+                action: function () {
+                  const player = GameState.getPlayer();
+                  if (player.credits >= 10) {
+                    GameState.updatePlayer({ credits: player.credits - 10 });
 
-          // Update UI
-          document
-            .querySelector(`#world-map path[data-region="${regionId}"]`)
-            .classList.add("current", "visited");
-          document
-            .getElementById("current-location")
-            .querySelector("span").textContent = awsRegions[regionId].name;
-          document
-            .getElementById("location-controls")
-            .classList.remove("hidden");
+                    // 30% chance of finding a clue
+                    if (Math.random() > 0.7) {
+                      const clue = getRandomClue();
+                      const caseData = GameState.getCase();
+                      GameState.updateCase({
+                        clues: [...caseData.clues, clue],
+                      });
 
-          // Start first event
-          triggerRandomEvent();
-        } else {
-          // Already deployed somewhere
-          document
-            .querySelector(
-              `#world-map path[data-region="${gameState.player.location}"]`
-            )
-            .classList.remove("current");
-          gameState.player.location = regionId;
+                      return {
+                        success: true,
+                        message: `Clue discovered: ${clue}`,
+                        effects: {},
+                        newClue: clue,
+                      };
+                    } else {
+                      return {
+                        success: true,
+                        message:
+                          "Quick scan didn't reveal anything noteworthy.",
+                        effects: {},
+                      };
+                    }
+                  } else {
+                    return {
+                      success: false,
+                      message: "Not enough credits to conduct scan.",
+                      effects: {},
+                    };
+                  }
+                },
+              },
+              {
+                text: "Mark for later review",
+                outcome: "No cost, no progress",
+                action: function () {
+                  return {
+                    success: true,
+                    message: "Logged for future investigation.",
+                    effects: {},
+                  };
+                },
+              },
+            ],
+          },
+          {
+            title: "Resource Shortage",
+            description:
+              "A critical AWS service is experiencing capacity issues in this region.",
+            image: "fa-exclamation-triangle",
+            color: "orange",
+            choices: [
+              {
+                text: "Purchase capacity from another region (60 credits)",
+                outcome: "Avoids service disruption",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 60) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 60,
+                    });
+                    return {
+                      success: true,
+                      message:
+                        "Additional capacity secured. No disruption to services.",
+                      effects: {},
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Service disruption occurs. Health -10",
+                      effects: { health: -10 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Failover to backup systems (30 credits)",
+                outcome: "Minor performance impact",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 30) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 30,
+                    });
+                    return {
+                      success: true,
+                      message:
+                        "Failover successful. Minor performance degradation.",
+                      effects: { performance: -1 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Major service disruption. Health -20",
+                      effects: { health: -20 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Wait for Amazon to resolve",
+                outcome: "Risks significant downtime",
+                action: function () {
+                  const random = Math.random();
+                  if (random > 0.5) {
+                    return {
+                      success: true,
+                      message: "AWS resolved the issue with minimal downtime.",
+                      effects: { health: -5 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Extended downtime occurred. Health -15, Performance -2",
+                      effects: { health: -15, performance: -2 },
+                    };
+                  }
+                },
+              },
+            ],
+          },
+          {
+            title: "AWS Service Incident",
+            description:
+              "A core AWS service in this region is experiencing an outage.",
+            image: "fa-server",
+            color: "red",
+            choices: [
+              {
+                text: "Failover to another region (100 credits)",
+                outcome: "Maintain availability, higher costs",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 100) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 100,
+                    });
+                    return {
+                      success: true,
+                      message: "Successfully failed over to another region.",
+                      effects: { cost: 2 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Severe service disruption. Health -25",
+                      effects: { health: -25 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Implement temporary workaround (50 credits)",
+                outcome: "Reduced functionality but operational",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 50) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 50,
+                    });
+                    return {
+                      success: true,
+                      message:
+                        "Workaround implemented with reduced functionality.",
+                      effects: { performance: -2 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Service disruption. Health -15, Performance -1",
+                      effects: { health: -15, performance: -1 },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Wait for AWS to resolve",
+                outcome: "Potential extended downtime",
+                action: function () {
+                  const random = Math.random();
+                  if (random > 0.7) {
+                    return {
+                      success: true,
+                      message: "AWS resolved the incident quickly.",
+                      effects: { health: -5 },
+                    };
+                  } else if (random > 0.3) {
+                    return {
+                      success: true,
+                      message: "AWS resolved the incident after some downtime.",
+                      effects: { health: -10 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message: "Extended outage. Health -20, Performance -2",
+                      effects: { health: -20, performance: -2 },
+                    };
+                  }
+                },
+              },
+            ],
+          },
+          {
+            title: "Budget Warning",
+            description:
+              "You're approaching your monthly AWS budget limit. Consider cost optimization.",
+            image: "fa-money-bill-wave",
+            color: "yellow",
+            choices: [
+              {
+                text: "Optimize current resources (30 credits)",
+                outcome: "Cost Opt +2, small performance impact",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 30) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 30,
+                    });
+                    return {
+                      success: true,
+                      message: "Resources successfully optimized.",
+                      effects: { cost: 2, performance: -1 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Budget overrun. Credits -10%",
+                      effects: {
+                        credits: -Math.floor(
+                          GameState.getPlayer().credits * 0.1
+                        ),
+                      },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Purchase Savings Plans (80 credits)",
+                outcome: "Cost Opt +4, long-term savings",
+                action: function () {
+                  if (GameState.getPlayer().credits >= 80) {
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits - 80,
+                    });
+                    return {
+                      success: true,
+                      message:
+                        "Savings Plans purchased. Significant long-term savings.",
+                      effects: { cost: 4 },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message:
+                        "Not enough credits. Budget exceeded. Credits -15%",
+                      effects: {
+                        credits: -Math.floor(
+                          GameState.getPlayer().credits * 0.15
+                        ),
+                      },
+                    };
+                  }
+                },
+              },
+              {
+                text: "Request budget increase",
+                outcome: "Approval chance based on architecture",
+                action: function () {
+                  // Base chance is 30% + 2% per architecture point
+                  const architectureScore = getArchitectureScore();
+                  const successChance = 30 + architectureScore * 2;
 
-          if (!gameState.player.visitedRegions.includes(regionId)) {
-            gameState.player.visitedRegions.push(regionId);
-            document
-              .querySelector(`#world-map path[data-region="${regionId}"]`)
-              .classList.add("visited");
-          }
+                  if (Math.random() * 100 < successChance) {
+                    const bonus = 50 + Math.floor(Math.random() * 100);
+                    GameState.updatePlayer({
+                      credits: GameState.getPlayer().credits + bonus,
+                    });
+                    return {
+                      success: true,
+                      message: `Budget increase approved! +${bonus} credits`,
+                      effects: { credits: bonus },
+                    };
+                  } else {
+                    return {
+                      success: false,
+                      message: "Request denied. Budget remains tight.",
+                      effects: {},
+                    };
+                  }
+                },
+              },
+            ],
+          },
+        ];
 
-          document
-            .querySelector(`#world-map path[data-region="${regionId}"]`)
-            .classList.add("current");
-          document
-            .getElementById("current-location")
-            .querySelector("span").textContent = awsRegions[regionId].name;
-
-          // Travel consumes resources
-          gameState.player.health -= 5;
-          updatePlayerStats();
-
-          // Chance of travel event
-          if (Math.random() > 0.7) {
-            triggerRandomEvent();
-          }
+        // Helper functions
+        function getRandomClue() {
+          const allClues = [];
+          Object.values(regions).forEach((region) => {
+            allClues.push(...region.events);
+          });
+          return allClues[Math.floor(Math.random() * allClues.length)];
         }
 
-        // Add region-specific clue
-        if (!gameState.case.targetRegion && Math.random() > 0.5) {
-          const regionEvents = awsRegions[regionId].events;
-          const randomEvent =
-            regionEvents[Math.floor(Math.random() * regionEvents.length)];
-          gameState.case.clues.push(randomEvent);
-
-          // Update case files
-          document.getElementById("current-lead").textContent = randomEvent;
-
-          // Small chance this is the target region
-          if (Math.random() > 0.8) {
-            gameState.case.targetRegion = regionId;
-            gameState.case.currentLead = `Strong evidence points to ${awsRegions[regionId].name}. Investigate thoroughly!`;
-            document.getElementById("current-lead").textContent =
-              gameState.case.currentLead;
-          }
+        function getRandomEvent() {
+          return randomEvents[Math.floor(Math.random() * randomEvents.length)];
         }
-      }
 
-      function triggerRandomEvent() {
-        if (gameState.phase !== "world") return;
+        function getServiceInfo(serviceId) {
+          return services[serviceId] || null;
+        }
 
-        gameState.currentEvent =
-          randomEvents[Math.floor(Math.random() * randomEvents.length)];
-        gameState.phase = "event";
+        function getRegionInfo(regionId) {
+          return regions[regionId] || null;
+        }
 
-        // Update UI
-        document.getElementById("world-map-view").classList.add("hidden");
-        document.getElementById("event-view").classList.remove("hidden");
+        function getAllServices() {
+          return Object.keys(services);
+        }
 
-        document.getElementById("event-title").textContent =
-          gameState.currentEvent.title;
-        document.getElementById("event-description").textContent =
-          gameState.currentEvent.description;
+        function getAllRegions() {
+          return Object.keys(regions);
+        }
 
-        const choicesContainer = document.getElementById("event-choices");
-        choicesContainer.innerHTML = "";
+        // Public API
+        return {
+          getRandomEvent,
+          getServiceInfo,
+          getRegionInfo,
+          getAllServices,
+          getAllRegions,
+          getRandomClue,
+        };
+      })();
 
-        gameState.currentEvent.choices.forEach((choice, index) => {
-          const button = document.createElement("button");
-          button.className =
-            "bg-gray-700 hover:bg-gray-600 p-3 rounded text-left";
-          button.innerHTML = `
-                    <div class="font-bold">${choice.text}</div>
-                    <div class="text-xs text-gray-400 mt-1">${choice.outcome}</div>
-                `;
-          button.addEventListener("click", () => handleEventChoice(index));
-          choicesContainer.appendChild(button);
-        });
-      }
+      // =============================================
+      // UTILITY FUNCTIONS
+      // =============================================
+      const Utils = (function () {
+        // Typewriter effect for text
+        function typeWriter(element, text, speed, callback) {
+          let i = 0;
+          element.style.animation = "none";
+          element.style.width = "100%";
+          element.textContent = "";
 
-      function handleEventChoice(choiceIndex) {
-        const choice = gameState.currentEvent.choices[choiceIndex];
-        const result = choice.action();
-
-        // Add result to console
-        addToConsole(`> ${gameState.currentEvent.title}: ${result}`);
-
-        // Return to world view
-        document.getElementById("event-view").classList.add("hidden");
-        document.getElementById("world-map-view").classList.remove("hidden");
-        gameState.phase = "world";
-
-        updatePlayerStats();
-      }
-
-      function startHacking(service) {
-        gameState.phase = "fps";
-        gameState.fpsGame.active = true;
-        gameState.fpsGame.score = 0;
-        gameState.fpsGame.timeLeft = 30;
-        gameState.fpsGame.serviceBeingHacked = service;
-
-        // Update UI
-        document.getElementById("world-map-view").classList.add("hidden");
-        document.getElementById("fps-view").classList.remove("hidden");
-        document.getElementById("hack-progress-bar").style.width = "0%";
-        document.getElementById("hack-timer").textContent = "30s";
-
-        // Start timer
-        gameState.fpsGame.interval = setInterval(() => {
-          gameState.fpsGame.timeLeft--;
-          document.getElementById(
-            "hack-timer"
-          ).textContent = `${gameState.fpsGame.timeLeft}s`;
-
-          if (gameState.fpsGame.timeLeft <= 0) {
-            endHacking();
-          }
-        }, 1000);
-
-        // Spawn targets
-        spawnHackingTargets();
-      }
-
-      function spawnHackingTargets() {
-        if (!gameState.fpsGame.active) return;
-
-        const fpsContainer = document.getElementById("fps-targets");
-
-        // Clear old targets
-        fpsContainer.innerHTML = "";
-        gameState.fpsGame.targets = [];
-
-        // Determine number of targets based on difficulty
-        const targetCount = 3 + Math.floor(gameState.player.level / 2);
-
-        for (let i = 0; i < targetCount; i++) {
-          const target = document.createElement("div");
-          target.className = "fps-target";
-
-          // Random position (avoid edges)
-          const x = 50 + Math.random() * (fpsContainer.offsetWidth - 100);
-          const y = 50 + Math.random() * (fpsContainer.offsetHeight - 100);
-
-          target.style.left = `${x}px`;
-          target.style.top = `${y}px`;
-
-          // Different service icons
-          const services = [
-            "fa-server",
-            "fa-database",
-            "fa-bolt",
-            "fa-table",
-            "fa-network-wired",
-            "fa-list-alt",
-          ];
-          const randomService =
-            services[Math.floor(Math.random() * services.length)];
-
-          target.innerHTML = `<i class="fas ${randomService}"></i>`;
-
-          // Click handler
-          target.addEventListener("click", () => {
-            if (!gameState.fpsGame.active) return;
-
-            // Remove target
-            target.style.transform = "scale(1.5)";
-            target.style.opacity = "0";
-
-            setTimeout(() => {
-              target.remove();
-            }, 200);
-
-            // Increase score
-            gameState.fpsGame.score++;
-
-            // Update progress
-            const progress = (gameState.fpsGame.score / 15) * 100;
-            document.getElementById(
-              "hack-progress-bar"
-            ).style.width = `${Math.min(progress, 100)}%`;
-
-            // Show terminal feedback
-            const ops = [
-              "decrypting",
-              "scanning",
-              "analyzing",
-              "cracking",
-              "reverse-engineering",
-            ];
-            const randomOp = ops[Math.floor(Math.random() * ops.length)];
-            addToTerminal(
-              `> ${randomOp} ${
-                awsServices[gameState.fpsGame.serviceBeingHacked].name
-              } data... ${Math.floor(progress)}% complete`
-            );
-
-            // Check for win condition
-            if (progress >= 100) {
-              endHacking(true);
+          function typing() {
+            if (i < text.length) {
+              // Handle newlines
+              if (text.substring(i, i + 1) === "\n") {
+                element.appendChild(document.createElement("br"));
+              } else {
+                element.textContent += text.charAt(i);
+              }
+              i++;
+              setTimeout(typing, speed);
+            } else if (callback) {
+              callback();
             }
+          }
 
-            // Spawn new target after delay
-            setTimeout(spawnHackingTargets, 1000);
+          typing();
+        }
+
+        // Add message to console with animation
+        function addToConsole(text, scroll = true) {
+          const consoleElement = document.getElementById("console");
+          const lines = text.split("\n");
+
+          lines.forEach((line, index) => {
+            const newLine = document.createElement("div");
+            newLine.textContent = line;
+            consoleElement.appendChild(newLine);
+
+            // Add slight delay between multi-line messages
+            if (index < lines.length - 1) {
+              consoleElement.appendChild(document.createElement("br"));
+            }
           });
 
-          fpsContainer.appendChild(target);
-          gameState.fpsGame.targets.push(target);
-        }
-      }
-
-      function endHacking(success = false) {
-        gameState.fpsGame.active = false;
-        clearInterval(gameState.fpsGame.interval);
-
-        // Update UI
-        document.getElementById("hack-progress-bar").style.width = "0%";
-        document.getElementById("fps-view").classList.add("hidden");
-        document.getElementById("world-map-view").classList.remove("hidden");
-
-        // Handle results
-        if (success) {
-          const service = awsServices[gameState.fpsGame.serviceBeingHacked];
-
-          // Add to inventory
-          gameState.player.resources[gameState.fpsGame.serviceBeingHacked]++;
-
-          // Add to deployed services if not already there
-          if (
-            !gameState.player.deployedServices.includes(
-              gameState.fpsGame.serviceBeingHacked
-            )
-          ) {
-            gameState.player.deployedServices.push(
-              gameState.fpsGame.serviceBeingHacked
-            );
+          if (scroll) {
+            consoleElement.scrollTop = consoleElement.scrollHeight;
           }
 
-          // Update architecture stats
-          updateArchitectureStats();
-
-          // Gain XP
-          gameState.player.xp += 5;
-          if (gameState.player.xp >= gameState.player.level * 10) {
-            gameState.player.level++;
-            gameState.player.xp = 0;
-            gameState.player.maxHealth += 10;
-            gameState.player.health = gameState.player.maxHealth;
-            addToConsole(
-              `> LEVEL UP! You are now Level ${gameState.player.level}`
-            );
-          }
-
-          addToConsole(`> Successfully deployed ${service.name}!`);
-
-          // Chance to find clues when deploying services
-          if (Math.random() > 0.7 && gameState.player.location) {
-            const regionEvents = awsRegions[gameState.player.location].events;
-            const randomEvent =
-              regionEvents[Math.floor(Math.random() * regionEvents.length)];
-            gameState.case.clues.push(randomEvent);
-            addToConsole(
-              `> Found clue in ${
-                awsRegions[gameState.player.location].name
-              } logs: ${randomEvent}`
-            );
-          }
-        } else {
-          addToConsole(
-            `> Failed to fully analyze ${
-              awsServices[gameState.fpsGame.serviceBeingHacked].name
-            } data.`
-          );
-          gameState.player.health -= 10;
+          // Add to game state history
+          GameState.addTerminalHistory(text);
         }
 
-        gameState.phase = "world";
-        updatePlayerStats();
-      }
-
-      function updatePlayerStats() {
-        document.getElementById("player-level").textContent =
-          gameState.player.level;
-        document.getElementById("player-xp-bar").style.width = `${
-          (gameState.player.xp / (gameState.player.level * 10)) * 100
-        }%`;
-
-        // Update health (with bounds checking)
-        gameState.player.health = Math.max(
-          0,
-          Math.min(gameState.player.health, gameState.player.maxHealth)
-        );
-        document.getElementById(
-          "player-health-text"
-        ).textContent = `${gameState.player.health}/${gameState.player.maxHealth}`;
-        document.getElementById("player-health-bar").style.width = `${
-          (gameState.player.health / gameState.player.maxHealth) * 100
-        }%`;
-
-        // Check for game over
-        if (gameState.player.health <= 0) {
-          addToConsole(
-            "> CRITICAL FAILURE: Agent health depleted. Mission failed."
-          );
-          setTimeout(resetGame, 3000);
+        // Add message to terminal (hacking mini-game)
+        function addToTerminal(text) {
+          const terminal = document.getElementById("terminal-screen");
+          const newLine = document.createElement("div");
+          newLine.textContent = text;
+          terminal.appendChild(newLine);
+          terminal.scrollTop = terminal.scrollHeight;
         }
 
-        document.getElementById("player-credits").textContent =
-          gameState.player.credits;
-        document.getElementById("player-certs").textContent =
-          gameState.player.certs;
+        // Calculate architecture score based on deployed services
+        function getArchitectureScore() {
+          const player = GameState.getPlayer();
+          let score = 0;
 
-        updateInventory();
-      }
-
-      function updateArchitectureStats() {
-        let security = 0;
-        let performance = 0;
-        let scalability = 0;
-        let cost = 0;
-
-        gameState.player.deployedServices.forEach((service) => {
-          security += awsServices[service].security;
-          performance += awsServices[service].performance;
-          scalability += awsServices[service].scalability;
-          cost += awsServices[service].cost;
-        });
-
-        document.getElementById("security-level").textContent = security;
-        document.getElementById("performance-level").textContent = performance;
-        document.getElementById("scalability-level").textContent = scalability;
-        document.getElementById("cost-level").textContent = cost;
-
-        // Update server status
-        const status = document.getElementById("server-status");
-        if (gameState.player.deployedServices.length > 0) {
-          status.querySelector("div").className =
-            "w-3 h-3 rounded-full bg-green-500 mr-2";
-          status.querySelector(
-            "span"
-          ).textContent = `${gameState.player.deployedServices.length} services deployed`;
-        }
-      }
-
-      function updateInventory() {
-        const inventory = document.getElementById("inventory");
-        inventory.innerHTML = "";
-
-        Object.keys(gameState.player.resources).forEach((service) => {
-          if (gameState.player.resources[service] > 0) {
-            const item = document.createElement("div");
-            item.className =
-              "bg-gray-700 rounded p-2 text-center inventory-item";
-            item.title = `${awsServices[service].name}\n${awsServices[service].description}`;
-
-            item.innerHTML = `
-                        <i class="fas ${getServiceIcon(
-                          service
-                        )} text-${getServiceColor(service)}-400 mb-1"></i>
-                        <div class="text-xs">${service.toUpperCase()} x<span>${
-              gameState.player.resources[service]
-            }</span></div>
-                    `;
-
-            inventory.appendChild(item);
-          }
-        });
-      }
-
-      function getServiceIcon(service) {
-        switch (service) {
-          case "ec2":
-            return "fa-server";
-          case "s3":
-            return "fa-database";
-          case "lambda":
-            return "fa-bolt";
-          case "rds":
-            return "fa-table";
-          case "cloudfront":
-            return "fa-network-wired";
-          case "dynamodb":
-            return "fa-list-alt";
-          default:
-            return "fa-question";
-        }
-      }
-
-      function getServiceColor(service) {
-        switch (service) {
-          case "ec2":
-            return "blue";
-          case "s3":
-            return "yellow";
-          case "lambda":
-            return "green";
-          case "rds":
-            return "red";
-          case "cloudfront":
-            return "purple";
-          case "dynamodb":
-            return "pink";
-          default:
-            return "gray";
-        }
-      }
-
-      function addToConsole(text) {
-        const consoleElement = document.getElementById("console");
-        const newLine = document.createElement("div");
-        newLine.textContent = text;
-        consoleElement.appendChild(newLine);
-        consoleElement.scrollTop = consoleElement.scrollHeight;
-      }
-
-      function addToTerminal(text) {
-        const terminal = document.getElementById("terminal-screen");
-        const newLine = document.createElement("div");
-        newLine.textContent = text;
-        terminal.appendChild(newLine);
-        terminal.scrollTop = terminal.scrollHeight;
-      }
-
-      function getRandomClue() {
-        const allClues = [];
-        Object.values(awsRegions).forEach((region) => {
-          allClues.push(...region.events);
-        });
-        return allClues[Math.floor(Math.random() * allClues.length)];
-      }
-
-      function advanceGameTime() {
-        gameState.case.gameTime++;
-        if (gameState.case.gameTime >= 24) {
-          gameState.case.gameTime = 0;
-          gameState.case.daysElapsed++;
-
-          // Daily credit income
-          gameState.player.credits += 50 + gameState.player.level * 10;
-          addToConsole(
-            `> Daily AWS budget allocated: ${
-              50 + gameState.player.level * 10
-            } credits added`
-          );
-
-          // Chance of random event each day
-          if (Math.random() > 0.5) {
-            triggerRandomEvent();
-          }
-        }
-
-        // Update clock display
-        const dayString = `Day ${gameState.case.daysElapsed + 1}`;
-        const timeString = `${gameState.case.gameTime
-          .toString()
-          .padStart(2, "0")}:00 UTC`;
-        document.getElementById(
-          "game-clock"
-        ).textContent = `${dayString}, ${timeString}`;
-
-        // Health recovery when resting in a region
-        if (gameState.case.gameTime >= 22 || gameState.case.gameTime <= 6) {
-          gameState.player.health = Math.min(
-            gameState.player.maxHealth,
-            gameState.player.health + 2
-          );
-          updatePlayerStats();
-        }
-      }
-
-      function resetGame() {
-        // Reset game state
-        gameState.player = {
-          name: "AGENT_███████",
-          level: 1,
-          xp: 0,
-          health: 100,
-          maxHealth: 100,
-          credits: 500,
-          certs: 0,
-          location: null,
-          visitedRegions: [],
-          resources: {
-            ec2: 1,
-            s3: 0,
-            lambda: 0,
-            rds: 0,
-            cloudfront: 0,
-            dynamodb: 0,
-          },
-          deployedServices: [],
-        };
-
-        gameState.case = {
-          objective:
-            "Locate the missing AWS Architect Dr. ███████ who disappeared while investigating irregularities in global cloud infrastructure.",
-          lastCoordinates: "Unknown - begin investigation in AWS regions",
-          currentLead: "No active leads - search for clues",
-          clues: [],
-          targetRegion: null,
-          daysElapsed: 0,
-          gameTime: 0,
-        };
-
-        // Reset UI
-        document.querySelectorAll("#world-map path").forEach((path) => {
-          path.classList.remove("current", "visited");
-        });
-
-        document
-          .getElementById("current-location")
-          .querySelector("span").textContent = "Offline";
-        document.getElementById("location-controls").classList.add("hidden");
-        document.getElementById("last-coordinates").textContent =
-          "Unknown - begin investigation in AWS regions";
-        document.getElementById("current-lead").textContent =
-          "No active leads - search for clues";
-        document.getElementById("game-clock").textContent = "Day 1, 08:00 UTC";
-
-        // Clear consoles
-        document.getElementById("console").innerHTML = `
-                <div>> Booting Quantum Drift v2.3.7...</div>
-                <div>> Establishing secure connection to AWS backbone...</div>
-                <div>> Authentication: <span class="text-white">AGENT_███████</span></div>
-                <div>> Welcome back, Agent. Systems nominal.</div>
-                <div>> Last login: 47 minutes ago from unidentified terminal</div>
-            `;
-
-        updatePlayerStats();
-        updateInventory();
-
-        // Show start modal again
-        document.getElementById("start-modal").classList.remove("hidden");
-
-        // Reset mission briefing animation
-        document.getElementById("mission-briefing").style.width = "0";
-        document.getElementById("mission-briefing").style.animation = "none";
-        document.getElementById("mission-briefing").textContent = "";
-        document.getElementById("start-game-btn").classList.add("opacity-50");
-      }
-
-      function checkForWin() {
-        if (!gameState.case.targetRegion) return false;
-
-        // Player needs to have discovered the secret in the target region
-        const hasSecret = gameState.case.clues.includes(
-          awsRegions[gameState.case.targetRegion].secret
-        );
-        const hasAllServices = Object.keys(awsServices).every((service) => {
-          return gameState.player.resources[service] > 0;
-        });
-
-        if (
-          hasSecret &&
-          hasAllServices &&
-          gameState.player.location === gameState.case.targetRegion
-        ) {
-          // Win the game
-          addToConsole(
-            "> CRITICAL MESSAGE DECRYPTED: Dr. ███████'s location confirmed!"
-          );
-          addToConsole(
-            "> QUANTUM ANOMALY NEUTRALIZED: The architect has been rescued!"
-          );
-          addToConsole(
-            "> MISSION COMPLETE. AWSDIRECTIVE OVERWATCH is pleased with your performance."
-          );
-
-          // Award final certification
-          gameState.player.certs++;
-
-          // Show win screen
-          setTimeout(() => {
-            alert(
-              `CONGRATULATIONS AGENT!\n\nYou successfully rescued Dr. ███████ and uncovered the AWS quantum anomaly in ${
-                awsRegions[gameState.case.targetRegion].name
-              }.\n\nFinal Stats:\n- Level ${gameState.player.level}\n- ${
-                gameState.player.certs
-              } AWS Certifications Earned\n- ${
-                gameState.case.daysElapsed
-              } Days Elapsed\n- ${
-                gameState.player.credits
-              } Credits\n\nWant to play again?`
-            );
-            resetGame();
-          }, 2000);
-
-          return true;
-        }
-
-        return false;
-      }
-
-      function typeWriter(element, text, speed, callback) {
-        let i = 0;
-        element.style.animation = "none";
-        element.style.width = "100%";
-
-        function typing() {
-          if (i < text.length) {
-            element.textContent += text.charAt(i);
-            i++;
-            setTimeout(typing, speed);
-          } else if (callback) {
-            callback();
-          }
-        }
-
-        typing();
-      }
-
-      // Event Listeners
-      document
-        .getElementById("start-game-btn")
-        .addEventListener("click", startGame);
-
-      document.querySelectorAll("#world-map path").forEach((path) => {
-        path.addEventListener("click", () => {
-          if (gameState.phase !== "world") return;
-
-          const region = path.dataset.region;
-          if (!gameState.player.location) {
-            // Initial deployment
-            travelToRegion(region);
-          } else {
-            // Show travel confirmation
-            addToConsole(
-              `> Preparing to redeploy infrastructure to ${awsRegions[region].name}`
-            );
-            setTimeout(() => {
-              travelToRegion(region);
-            }, 2000);
-          }
-        });
-      });
-
-      document
-        .getElementById("investigate-btn")
-        .addEventListener("click", () => {
-          if (!gameState.player.location) return;
-
-          // Cost to investigate
-          const cost = 20;
-          if (gameState.player.credits >= cost) {
-            gameState.player.credits -= cost;
-
-            // Chance to find clue
-            if (Math.random() > 0.4) {
-              const regionEvents = awsRegions[gameState.player.location].events;
-              const randomEvent =
-                regionEvents[Math.floor(Math.random() * regionEvents.length)];
-              gameState.case.clues.push(randomEvent);
-
-              // Update case files
-              gameState.case.lastCoordinates =
-                awsRegions[gameState.player.location].name;
-              document.getElementById("last-coordinates").textContent =
-                gameState.case.lastCoordinates;
-
-              // Small chance this is the target region
-              if (!gameState.case.targetRegion && Math.random() > 0.8) {
-                gameState.case.targetRegion = gameState.player.location;
-                gameState.case.currentLead = `Strong evidence points to ${
-                  awsRegions[gameState.player.location].name
-                }. Investigate thoroughly!`;
-                document.getElementById("current-lead").textContent =
-                  gameState.case.currentLead;
-              }
-
-              addToConsole(
-                `> Found clue in ${
-                  awsRegions[gameState.player.location].name
-                }: ${randomEvent}`
-              );
-            } else {
-              addToConsole(
-                `> Investigation in ${
-                  awsRegions[gameState.player.location].name
-                } revealed nothing unusual.`
-              );
+          player.deployedServices.forEach((service) => {
+            const info = AWSData.getServiceInfo(service);
+            if (info) {
+              score +=
+                info.security + info.performance + info.scalability + info.cost;
             }
+          });
 
-            updatePlayerStats();
-          } else {
-            addToConsole("> Insufficient credits for investigation");
+          return score;
+        }
+
+        // Shake an element (for errors/feedback)
+        function shakeElement(elementId) {
+          const element = document.getElementById(elementId);
+          element.classList.add("shake");
+          setTimeout(() => {
+            element.classList.remove("shake");
+          }, 500);
+        }
+
+        // Format time for game clock
+        function formatGameTime(days, hours) {
+          const dayString = `Day ${days + 1}`;
+          const timeString = `${hours.toString().padStart(2, "0")}:00 UTC`;
+          return `${dayString}, ${timeString}`;
+        }
+
+        // Simulate typing in console input
+        function simulateTyping(
+          text,
+          inputId = "console-input",
+          interval = 50
+        ) {
+          const input = document.getElementById(inputId);
+          let i = 0;
+          input.value = "";
+
+          function type() {
+            if (i < text.length) {
+              input.value += text.charAt(i);
+              i++;
+              setTimeout(type, interval);
+            }
           }
-        });
 
-      document.querySelectorAll(".service-btn").forEach((button) => {
-        button.addEventListener("click", () => {
-          const service = button.dataset.service;
+          type();
+        }
 
-          // Check if already hacked this service
-          if (gameState.player.resources[service] > 0) {
-            addToConsole(
-              `> ${awsServices[service].name} already deployed in current region.`
+        return {
+          typeWriter,
+          addToConsole,
+          addToTerminal,
+          getArchitectureScore,
+          shakeElement,
+          formatGameTime,
+          simulateTyping,
+        };
+      })();
+
+      // =============================================
+      // UI UPDATE FUNCTIONS
+      // =============================================
+      const UI = (function () {
+        // Update all player stats in the UI
+        function updatePlayerStats() {
+          const player = GameState.getPlayer();
+
+          // Basic stats
+          document.getElementById("player-level").textContent = player.level;
+          document.getElementById("player-xp-bar").style.width = `${
+            (player.xp / (player.level * 10)) * 100
+          }%`;
+
+          // Health (with bounds checking)
+          player.health = Math.max(
+            0,
+            Math.min(player.health, player.maxHealth)
+          );
+          document.getElementById(
+            "player-health-text"
+          ).textContent = `${player.health}/${player.maxHealth}`;
+          document.getElementById("player-health-bar").style.width = `${
+            (player.health / player.maxHealth) * 100
+          }%`;
+
+          // Credits and certs
+          document.getElementById("player-credits").textContent =
+            player.credits;
+          document.getElementById("player-certs").textContent = player.certs;
+          document.getElementById("available-credits").textContent =
+            player.credits;
+
+          // Check for game over conditions
+          checkGameOver();
+        }
+
+        // Update the inventory UI
+        function updateInventory() {
+          const player = GameState.getPlayer();
+          const inventory = document.getElementById("inventory");
+          inventory.innerHTML = "";
+
+          // Update inventory items
+          Object.keys(player.resources).forEach((service) => {
+            if (player.resources[service] > 0) {
+              const serviceInfo = AWSData.getServiceInfo(service);
+              const item = document.createElement("div");
+              item.className =
+                "bg-gray-700 rounded p-2 text-center inventory-item";
+              item.title = `${serviceInfo.name}\n${serviceInfo.description}\nPrice: ${serviceInfo.price} credits`;
+              item.innerHTML = `
+                            <i class="fas ${serviceInfo.icon} text-${
+                serviceInfo.color
+              }-400 mb-1"></i>
+                            <div class="text-xs">${service.toUpperCase()} x<span>${
+                player.resources[service]
+              }</span></div>
+                        `;
+              inventory.appendChild(item);
+            }
+          });
+
+          // Update deployed services
+          const deployedContainer =
+            document.getElementById("deployed-services");
+          deployedContainer.innerHTML = "";
+
+          if (player.deployedServices.length > 0) {
+            player.deployedServices.forEach((service) => {
+              const serviceInfo = AWSData.getServiceInfo(service);
+              const hexagon = document.createElement("div");
+              hexagon.className = `hexagon bg-${serviceInfo.color}-600 hover:bg-${serviceInfo.color}-700 cursor-help`;
+              hexagon.title = `${serviceInfo.name}: ${serviceInfo.use}`;
+              hexagon.innerHTML = `<i class="fas ${serviceInfo.icon} text-white"></i>`;
+              deployedContainer.appendChild(hexagon);
+            });
+          } else {
+            deployedContainer.innerHTML =
+              '<div class="text-xs text-gray-500 italic">No services deployed</div>';
+          }
+        }
+
+        // Update architecture stats
+        function updateArchitectureStats() {
+          const player = GameState.getPlayer();
+          let security = 0;
+          let performance = 0;
+          let scalability = 0;
+          let cost = 0;
+
+          player.deployedServices.forEach((service) => {
+            const info = AWSData.getServiceInfo(service);
+            security += info.security;
+            performance += info.performance;
+            scalability += info.scalability;
+            cost += info.cost;
+          });
+
+          // Update display
+          document.getElementById("security-level").textContent = security;
+          document.getElementById("performance-level").textContent =
+            performance;
+          document.getElementById("scalability-level").textContent =
+            scalability;
+          document.getElementById("cost-level").textContent = cost;
+
+          // Update server status
+          const status = document.getElementById("server-status");
+          if (player.deployedServices.length > 0) {
+            status.querySelector("div").className =
+              "w-3 h-3 rounded-full bg-green-500 mr-2";
+            status.querySelector("span").textContent = `${
+              player.deployedServices.length
+            } service${
+              player.deployedServices.length !== 1 ? "s" : ""
+            } deployed`;
+          }
+
+          // Update architecture score
+          const score = Utils.getArchitectureScore();
+          document.getElementById("architecture-score").textContent = score;
+          document.getElementById(
+            "architecture-score-bar"
+          ).style.width = `${Math.min(100, score)}%`;
+        }
+
+        // Update case files/clues in UI
+        function updateCaseFiles() {
+          const caseData = GameState.getCase();
+
+          document.getElementById("last-coordinates").textContent =
+            caseData.lastCoordinates;
+          document.getElementById("current-lead").textContent =
+            caseData.currentLead;
+
+          // Update clues list
+          const cluesList = document.getElementById("clues-items");
+          cluesList.innerHTML = "";
+
+          caseData.clues.forEach((clue) => {
+            const li = document.createElement("li");
+            li.textContent = clue;
+            li.className = "hover:text-yellow-300 cursor-help";
+            li.title = "Click to add this clue to the console";
+            li.addEventListener("click", () => {
+              Utils.addToConsole(`> Reviewing clue: ${clue}`);
+            });
+            cluesList.appendChild(li);
+          });
+
+          // Update toggle button
+          const toggleBtn = document.getElementById("toggle-clues");
+          toggleBtn.textContent =
+            caseData.clues.length > 0
+              ? `${
+                  cluesList.classList.contains("hidden") ? "Show" : "Hide"
+                } Clues (${caseData.clues.length})`
+              : "No clues discovered yet";
+
+          toggleBtn.style.display =
+            caseData.clues.length > 0 ? "block" : "none";
+        }
+
+        // Update region information tooltip
+        function updateRegionInfo(regionId) {
+          const region = AWSData.getRegionInfo(regionId);
+          const infoElement = document.getElementById("region-info");
+
+          if (region) {
+            document.getElementById("region-name").textContent = region.name;
+            document.getElementById("region-description").textContent =
+              region.description;
+            infoElement.classList.remove("hidden");
+          } else {
+            infoElement.classList.add("hidden");
+          }
+        }
+
+        // Check for game over conditions
+        function checkGameOver() {
+          const player = GameState.getPlayer();
+
+          // Health depletion
+          if (player.health <= 0) {
+            gameOver(
+              "Agent health depleted. Mission failed.",
+              "CRITICAL FAILURE"
             );
             return;
           }
 
-          // Check if we can afford it
-          if (gameState.player.credits >= awsServices[service].price) {
-            gameState.player.credits -= awsServices[service].price;
-
-            // Start hacking mini-game
-            addToConsole(
-              `> Initiating quantum hack of ${awsServices[service].name}...`
-            );
-            startHacking(service);
-
-            // Show terminal during hacking
-            document
-              .getElementById("terminal-screen")
-              .classList.remove("hidden");
-          } else {
-            addToConsole(
-              `> Insufficient credits (need ${awsServices[service].price}) to hack ${awsServices[service].name}`
-            );
-          }
-        });
-      });
-
-      document
-        .getElementById("console-input")
-        .addEventListener("keypress", (e) => {
-          if (e.key === "Enter") {
-            const command = document
-              .getElementById("console-input")
-              .value.trim();
-            if (command) {
-              addToConsole(`> ${command}`);
-              document.getElementById("console-input").value = "";
-
-              // Process command
-              if (command === "help") {
-                addToConsole(
-                  "> Available commands: help, status, deploy [service], scan, investigate, travel [region]"
-                );
-              } else if (command === "status") {
-                addToConsole(
-                  `> AGENT STATUS: Level ${gameState.player.level} (${
-                    gameState.player.xp
-                  }/${gameState.player.level * 10} XP)`
-                );
-                addToConsole(
-                  `> HEALTH: ${gameState.player.health}/${gameState.player.maxHealth}`
-                );
-                addToConsole(`> CREDITS: ${gameState.player.credits}`);
-                addToConsole(
-                  `> LOCATION: ${
-                    gameState.player.location
-                      ? awsRegions[gameState.player.location].name
-                      : "Not deployed"
-                  }`
-                );
-              } else if (command.startsWith("deploy ")) {
-                const service = command.split(" ")[1].toLowerCase();
-                if (awsServices[service]) {
-                  if (gameState.player.resources[service] > 0) {
-                    addToConsole(
-                      `> ${awsServices[service].name} already deployed in current region.`
-                    );
-                  } else {
-                    if (
-                      gameState.player.credits >= awsServices[service].price
-                    ) {
-                      gameState.player.credits -= awsServices[service].price;
-                      addToConsole(
-                        `> Initiating quantum hack of ${awsServices[service].name}...`
-                      );
-                      startHacking(service);
-                      document
-                        .getElementById("terminal-screen")
-                        .classList.remove("hidden");
-                    } else {
-                      addToConsole(
-                        `> Insufficient credits (need ${awsServices[service].price}) to hack ${awsServices[service].name}`
-                      );
-                    }
-                  }
-                } else {
-                  addToConsole(
-                    "> Unknown AWS service. Try: ec2, s3, lambda, rds, cloudfront, dynamodb"
-                  );
-                }
-              } else if (command === "scan") {
-                if (gameState.player.location) {
-                  const region = awsRegions[gameState.player.location];
-                  addToConsole(`> Scanning ${region.name}...`);
-                  setTimeout(() => {
-                    const randomEvent =
-                      region.events[
-                        Math.floor(Math.random() * region.events.length)
-                      ];
-                    gameState.case.clues.push(randomEvent);
-                    addToConsole(`> Found clue: ${randomEvent}`);
-
-                    // Small chance this is the target region
-                    if (!gameState.case.targetRegion && Math.random() > 0.8) {
-                      gameState.case.targetRegion = gameState.player.location;
-                      gameState.case.currentLead = `Strong evidence points to ${region.name}. Investigate thoroughly!`;
-                      document.getElementById("current-lead").textContent =
-                        gameState.case.currentLead;
-                      addToConsole(
-                        `> CRITICAL: Strong evidence points to ${region.name} as key location!`
-                      );
-                    }
-                  }, 2000);
-                } else {
-                  addToConsole(
-                    "> Not currently deployed to any region. Use 'travel [region]' first."
-                  );
-                }
-              } else if (command === "investigate") {
-                if (gameState.player.location) {
-                  if (
-                    gameState.case.targetRegion &&
-                    gameState.player.location === gameState.case.targetRegion
-                  ) {
-                    const region = awsRegions[gameState.player.location];
-
-                    // Check if player has found the secret
-                    if (gameState.case.clues.includes(region.secret)) {
-                      checkForWin();
-                    } else {
-                      addToConsole(
-                        "> Deep investigation reveals nothing new. Maybe we missed something?"
-                      );
-                    }
-                  } else {
-                    addToConsole(
-                      "> No significant leads to investigate here. Try another region."
-                    );
-                  }
-                } else {
-                  addToConsole(
-                    "> Not currently deployed to any region. Use 'travel [region]' first."
-                  );
-                }
-              } else if (command.startsWith("travel ")) {
-                const regionId = command.split(" ")[1];
-                if (awsRegions[regionId]) {
-                  if (gameState.player.location === regionId) {
-                    addToConsole(`> Already in ${awsRegions[regionId].name}`);
-                  } else {
-                    addToConsole(
-                      `> Preparing to redeploy infrastructure to ${awsRegions[regionId].name}`
-                    );
-                    setTimeout(() => {
-                      travelToRegion(regionId);
-                    }, 2000);
-                  }
-                } else {
-                  addToConsole(
-                    "> Unknown AWS region. Try: us-east-1, us-west-2, eu-west-1, etc."
-                  );
-                }
-              } else {
-                addToConsole(
-                  "> Command not recognized. Type 'help' for available commands."
-                );
-              }
+          // Credit depletion (with small buffer)
+          if (player.credits < 20) {
+            // Last chance - random event might give credits
+            if (player.credits <= 0) {
+              gameOver(
+                "Your AWS budget has been depleted. Without sufficient credits to deploy new services, the mission has failed.",
+                "BUDGET OVERRUN"
+              );
+            } else {
+              Utils.addToConsole(
+                "> WARNING: Critically low credit balance. Mission at risk."
+              );
             }
           }
-        });
+        }
 
-      document
-        .getElementById("console-submit")
-        .addEventListener("click", () => {
-          const command = document.getElementById("console-input").value.trim();
-          if (command) {
-            addToConsole(`> ${command}`);
-            document.getElementById("console-input").value = "";
+        // Show game over screen
+        function gameOver(reason, title = "MISSION FAILED") {
+          GameState.setPhase("gameover");
 
-            // Process command (same as above)
-            if (command === "help") {
-              addToConsole(
-                "> Available commands: help, status, deploy [service], scan, investigate, travel [region]"
+          document.getElementById("game-over-title").textContent = title;
+          document.getElementById("game-over-reason").textContent = reason;
+
+          // Add game log
+          const logContainer = document.getElementById("game-over-log");
+          logContainer.innerHTML = "";
+
+          const logs = GameState.getTerminalHistory().slice(-10); // Last 10 messages
+          logs.forEach((log) => {
+            const entry = document.createElement("div");
+            entry.textContent = log;
+            logContainer.appendChild(entry);
+          });
+
+          // Show modal
+          document
+            .querySelectorAll(".game-view")
+            .forEach((view) => view.classList.add("hidden"));
+          document.getElementById("game-over-modal").classList.remove("hidden");
+        }
+
+        // Show win screen
+        function showWinScreen() {
+          GameState.setPhase("win");
+          const player = GameState.getPlayer();
+          const caseData = GameState.getCase();
+
+          // Update stats
+          document.getElementById("win-level").textContent = player.level;
+          document.getElementById("win-days").textContent =
+            caseData.daysElapsed;
+          document.getElementById("win-credits").textContent = player.credits;
+          document.getElementById("win-certs").textContent = player.certs;
+          document.getElementById("win-score").textContent =
+            Utils.getArchitectureScore();
+
+          // List deployed services
+          const servicesContainer = document.getElementById("win-services");
+          servicesContainer.innerHTML = "";
+
+          if (player.deployedServices.length > 0) {
+            const list = document.createElement("ul");
+            list.className = "space-y-1";
+
+            player.deployedServices.forEach((service) => {
+              const info = AWSData.getServiceInfo(service);
+              const item = document.createElement("li");
+              item.className = "flex items-center";
+              item.innerHTML = `
+                            <i class="fas ${info.icon} text-${info.color}-400 mr-2"></i>
+                            <span>${info.name}</span>
+                        `;
+              list.appendChild(item);
+            });
+
+            servicesContainer.appendChild(list);
+          }
+
+          // Add win log
+          const logContainer = document.getElementById("win-log");
+          logContainer.innerHTML = "";
+
+          const targetRegion = AWSData.getRegionInfo(caseData.targetRegion);
+          const winMessage = `
+                    > MISSION SUCCESS\n
+                    > Dr. ███████ located in ${targetRegion.name}\n
+                    > Quantum anomaly neutralized\n
+                    > AWS infrastructure secured\n
+                    > AWSDIRECTIVE OVERWATCH is pleased with your performance
+                `;
+
+          Utils.addToConsole(winMessage);
+
+          const logs = GameState.getTerminalHistory().slice(-10); // Last 10 messages
+          logs.forEach((log) => {
+            const entry = document.createElement("div");
+            entry.textContent = log;
+            logContainer.appendChild(entry);
+          });
+
+          // Show modal
+          document
+            .querySelectorAll(".game-view")
+            .forEach((view) => view.classList.add("hidden"));
+          document.getElementById("win-modal").classList.remove("hidden");
+        }
+
+        // Toggle clue visibility
+        function toggleCluesVisibility() {
+          const cluesList = document.getElementById("clues-list");
+          const toggleBtn = document.getElementById("toggle-clues");
+
+          if (cluesList.classList.contains("hidden")) {
+            cluesList.classList.remove("hidden");
+            toggleBtn.textContent = `Hide Clues (${
+              GameState.getCase().clues.length
+            })`;
+          } else {
+            cluesList.classList.add("hidden");
+            toggleBtn.textContent = `Show Clues (${
+              GameState.getCase().clues.length
+            })`;
+          }
+        }
+
+        return {
+          updatePlayerStats,
+          updateInventory,
+          updateArchitectureStats,
+          updateCaseFiles,
+          updateRegionInfo,
+          checkGameOver,
+          gameOver,
+          showWinScreen,
+          toggleCluesVisibility,
+        };
+      })();
+
+      // =============================================
+      // GAME LOGIC MODULES
+      // =============================================
+      const GameLogic = (function () {
+        // Start the game (from start screen)
+        function startGame() {
+          document.getElementById("start-modal").classList.add("hidden");
+          document.getElementById("world-map-view").classList.remove("hidden");
+          GameState.setPhase("world");
+
+          // Animate mission briefing
+          const briefing = `> MISSION BRIEFING:\n> Dr. Linda ███████, top AWS Certified Solutions Architect, vanished while investigating \n> quantum computing anomalies in AWS Global Infrastructure. Your task: follow her \n> trail through AWS regions, gather clues from cloud services, and uncover the truth \n> behind her disappearance. Beware of hostile entities monitoring the network.\n> Good luck, Agent.`;
+
+          Utils.typeWriter(
+            document.getElementById("mission-briefing"),
+            briefing,
+            20,
+            () => {
+              document
+                .getElementById("start-game-btn")
+                .classList.remove("opacity-50");
+            }
+          );
+
+          // Start game clock
+          setInterval(advanceGameTime, 30000); // Every 30 seconds = 1 hour game time
+        }
+
+        // Travel to a new AWS region
+        function travelToRegion(regionId) {
+          const player = GameState.getPlayer();
+          const region = AWSData.getRegionInfo(regionId);
+
+          if (!player.location) {
+            // First deployment
+            GameState.updatePlayer({
+              location: regionId,
+              visitedRegions: [...player.visitedRegions, regionId],
+            });
+
+            // Update UI
+            document
+              .querySelector(`#world-map path[data-region="${regionId}"]`)
+              .classList.add("current", "visited");
+            document
+              .getElementById("current-location")
+              .querySelector("span").textContent = region.name;
+            document
+              .getElementById("location-controls")
+              .classList.remove("hidden");
+
+            // Add to console
+            Utils.addToConsole(
+              `> Successfully deployed initial infrastructure to ${region.name}`
+            );
+
+            // Start first event after delay
+            setTimeout(triggerRandomEvent, 2000);
+          } else {
+            // Already deployed somewhere
+            document
+              .querySelector(
+                `#world-map path[data-region="${player.location}"]`
+              )
+              .classList.remove("current");
+
+            GameState.updatePlayer({
+              location: regionId,
+              visitedRegions: player.visitedRegions.includes(regionId)
+                ? player.visitedRegions
+                : [...player.visitedRegions, regionId],
+            });
+
+            // Update UI
+            if (!player.visitedRegions.includes(regionId)) {
+              document
+                .querySelector(`#world-map path[data-region="${regionId}"]`)
+                .classList.add("visited");
+            }
+
+            document
+              .querySelector(`#world-map path[data-region="${regionId}"]`)
+              .classList.add("current");
+            document
+              .getElementById("current-location")
+              .querySelector("span").textContent = region.name;
+
+            // Travel consumes resources
+            const healthCost = 5;
+            GameState.updatePlayer({ health: player.health - healthCost });
+            UI.updatePlayerStats();
+
+            Utils.addToConsole(
+              `> Infrastructure redeployed to ${region.name} (-${healthCost} health)`
+            );
+
+            // Chance of travel event
+            if (Math.random() > 0.7) {
+              setTimeout(triggerRandomEvent, 1500);
+            }
+          }
+
+          // Add region-specific clue
+          const caseData = GameState.getCase();
+          if (!caseData.targetRegion && Math.random() > 0.5) {
+            const regionEvents = region.events;
+            const randomEvent =
+              regionEvents[Math.floor(Math.random() * regionEvents.length)];
+
+            GameState.updateCase({
+              clues: [...caseData.clues, randomEvent],
+              lastCoordinates: region.name,
+            });
+
+            UI.updateCaseFiles();
+
+            // Small chance this is the target region
+            if (Math.random() > 0.8) {
+              GameState.updateCase({
+                targetRegion: regionId,
+                currentLead: `Strong evidence points to ${region.name}. Investigate thoroughly!`,
+              });
+
+              Utils.addToConsole(
+                `> CRITICAL: Strong evidence points to ${region.name} as key location!`
               );
-            } else if (command === "status") {
-              addToConsole(
-                `> AGENT STATUS: Level ${gameState.player.level} (${
-                  gameState.player.xp
-                }/${gameState.player.level * 10} XP)`
+            } else {
+              Utils.addToConsole(
+                `> Found clue in ${region.name}: ${randomEvent}`
               );
-              addToConsole(
-                `> HEALTH: ${gameState.player.health}/${gameState.player.maxHealth}`
+            }
+
+            UI.updateCaseFiles();
+          }
+        }
+
+        // Trigger a random event
+        function triggerRandomEvent() {
+          if (GameState.getPhase() !== "world") return;
+
+          const event = AWSData.getRandomEvent();
+          GameState.setCurrentEvent(event);
+          GameState.setPhase("event");
+
+          // Update UI
+          document.getElementById("world-map-view").classList.add("hidden");
+          document.getElementById("event-view").classList.remove("hidden");
+
+          document.getElementById("event-title").textContent = event.title;
+          document.getElementById("event-description").textContent =
+            event.description;
+
+          // Update event image
+          const eventImage = document.getElementById("event-image");
+          eventImage.className = `w-32 h-32 bg-gray-700 rounded-full mb-4 flex items-center justify-center text-${event.color}-400`;
+          eventImage.innerHTML = `<i class="fas ${event.image} text-4xl"></i>`;
+
+          // Create choice buttons
+          const choicesContainer = document.getElementById("event-choices");
+          choicesContainer.innerHTML = "";
+
+          event.choices.forEach((choice, index) => {
+            const button = document.createElement("button");
+            button.className =
+              "bg-gray-700 hover:bg-gray-600 p-3 rounded text-left";
+            button.innerHTML = `
+                        <div class="font-bold">${choice.text}</div>
+                        <div class="text-xs text-gray-400 mt-1">${choice.outcome}</div>
+                    `;
+            button.addEventListener("click", () => handleEventChoice(index));
+            choicesContainer.appendChild(button);
+          });
+        }
+
+        // Handle player choice in an event
+        function handleEventChoice(choiceIndex) {
+          const event = GameState.getCurrentEvent();
+          const choice = event.choices[choiceIndex];
+          const result = choice.action();
+
+          // Apply effects
+          if (result.effects) {
+            const player = GameState.getPlayer();
+            const updates = { ...player };
+
+            if (result.effects.health) {
+              updates.health = player.health + result.effects.health;
+            }
+            if (result.effects.credits) {
+              updates.credits = player.credits + result.effects.credits;
+            }
+
+            GameState.updatePlayer(updates);
+          }
+
+          // Add result to console first
+          Utils.addToConsole(`> ${event.title}: ${result.message}`);
+
+          // Update architecture stats if modified
+          if (
+            result.effects?.security ||
+            result.effects?.performance ||
+            result.effects?.scalability ||
+            result.effects?.cost
+          ) {
+            // In a real implementation, we would track these separately
+            // For now, we'll just note the changes in the console
+            let effectMessages = [];
+            if (result.effects.security) {
+              effectMessages.push(
+                `Security ${result.effects.security > 0 ? "+" : ""}${
+                  result.effects.security
+                }`
               );
-              addToConsole(`> CREDITS: ${gameState.player.credits}`);
-              addToConsole(
+            }
+            if (result.effects.performance) {
+              effectMessages.push(
+                `Performance ${result.effects.performance > 0 ? "+" : ""}${
+                  result.effects.performance
+                }`
+              );
+            }
+            if (result.effects.scalability) {
+              effectMessages.push(
+                `Scalability ${result.effects.scalability > 0 ? "+" : ""}${
+                  result.effects.scalability
+                }`
+              );
+            }
+            if (result.effects.cost) {
+              effectMessages.push(
+                `Cost Optimization ${result.effects.cost > 0 ? "+" : ""}${
+                  result.effects.cost
+                }`
+              );
+            }
+
+            if (effectMessages.length > 0) {
+              Utils.addToConsole(
+                `> System effects: ${effectMessages.join(", ")}`
+              );
+            }
+          }
+
+          // Handle new service deployment from event
+          if (result.newService) {
+            GameLogic.updatePlayerResources();
+          }
+
+          // Handle critical clue discovery
+          if (result.criticalClue) {
+            UI.updateCaseFiles();
+          }
+
+          // Return to world view
+          document.getElementById("event-view").classList.add("hidden");
+          document.getElementById("world-map-view").classList.remove("hidden");
+          GameState.setPhase("world");
+
+          // Update UI
+          UI.updatePlayerStats();
+          UI.checkGameOver();
+        }
+
+        // Start the hacking mini-game
+        function startHacking(service) {
+          GameState.setPhase("fps");
+          GameState.updateFpsGame({
+            active: true,
+            score: 0,
+            timeLeft: 30,
+            serviceBeingHacked: service,
+          });
+
+          const serviceInfo = AWSData.getServiceInfo(service);
+
+          // Update UI
+          document.getElementById("world-map-view").classList.add("hidden");
+          document.getElementById("fps-view").classList.remove("hidden");
+          document.getElementById("hack-progress-bar").style.width = "0%";
+          document.getElementById("hack-timer").textContent = "30s";
+          document.getElementById("hack-score").textContent = "0";
+
+          // Clear terminal
+          document.getElementById("terminal-screen").innerHTML = "";
+          Utils.addToTerminal(
+            `> Initiating quantum hack of ${serviceInfo.name}...`
+          );
+          Utils.addToTerminal(`> Bypassing IAM policies...`);
+          Utils.addToTerminal(`> Establishing secure tunnel...`);
+
+          // Start timer
+          GameState.updateFpsGame({
+            interval: setInterval(() => {
+              const fpsGame = GameState.getFpsGame();
+              if (fpsGame.timeLeft <= 0) {
+                endHacking();
+                return;
+              }
+
+              GameState.updateFpsGame({ timeLeft: fpsGame.timeLeft - 1 });
+              document.getElementById(
+                "hack-timer"
+              ).textContent = `${fpsGame.timeLeft}s`;
+
+              // Speed up as time runs low
+              if (fpsGame.timeLeft < 10) {
+                document.getElementById("hack-timer").classList.add("shake");
+              } else {
+                document.getElementById("hack-timer").classList.remove("shake");
+              }
+            }, 1000),
+          });
+
+          // Spawn initial targets
+          spawnHackingTargets();
+        }
+
+        // Spawn targets for hacking mini-game
+        function spawnHackingTargets() {
+          if (!GameState.getFpsGame().active) return;
+
+          const fpsContainer = document.getElementById("fps-targets");
+          const service = GameState.getFpsGame().serviceBeingHacked;
+
+          // Clear old targets
+          fpsContainer.innerHTML = "";
+          GameState.updateFpsGame({ targets: [] });
+
+          // Determine number of targets based on difficulty
+          const player = GameState.getPlayer();
+          const targetCount =
+            3 +
+            Math.floor(player.level / 2) +
+            (player.deployedServices.length > 3 ? 1 : 0);
+
+          for (let i = 0; i < targetCount; i++) {
+            const target = document.createElement("div");
+            target.className = "fps-target";
+
+            // Random position (avoid edges)
+            const x = 50 + Math.random() * (fpsContainer.offsetWidth - 100);
+            const y = 50 + Math.random() * (fpsContainer.offsetHeight - 100);
+
+            target.style.left = `${x}px`;
+            target.style.top = `${y}px`;
+
+            // Different service icons
+            const services = [
+              "fa-server",
+              "fa-database",
+              "fa-bolt",
+              "fa-table",
+              "fa-network-wired",
+              "fa-list-alt",
+            ];
+            const randomService =
+              services[Math.floor(Math.random() * services.length)];
+
+            // Correct target matches the service being hacked
+            const isCorrect =
+              randomService === AWSData.getServiceInfo(service).icon;
+            if (isCorrect) {
+              target.dataset.correct = "true";
+            }
+
+            target.innerHTML = `<i class="fas ${randomService}"></i>`;
+
+            // Click handler
+            target.addEventListener("click", () => {
+              const fpsGame = GameState.getFpsGame();
+              if (!fpsGame.active) return;
+
+              // Visual feedback
+              target.classList.add("hit");
+
+              // Remove target after animation
+              setTimeout(() => {
+                target.remove();
+              }, 300);
+
+              // Increase score and progress if correct target
+              if (target.dataset.correct) {
+                GameState.updateFpsGame({ score: fpsGame.score + 1 });
+                document.getElementById("hack-score").textContent =
+                  fpsGame.score + 1;
+
+                // Update progress
+                const progress = (fpsGame.score / 15) * 100;
+                document.getElementById(
+                  "hack-progress-bar"
+                ).style.width = `${Math.min(progress, 100)}%`;
+
+                // Show terminal feedback
+                const ops = [
+                  "decrypting",
+                  "scanning",
+                  "analyzing",
+                  "cracking",
+                  "reverse-engineering",
+                ];
+                const randomOp = ops[Math.floor(Math.random() * ops.length)];
+                Utils.addToTerminal(
+                  `> ${randomOp} ${
+                    AWSData.getServiceInfo(service).name
+                  } data... ${Math.floor(progress)}% complete`
+                );
+
+                // Check for win condition
+                if (progress >= 100) {
+                  endHacking(true);
+                }
+              } else {
+                // Penalty for wrong target
+                Utils.addToTerminal(
+                  "> ERROR: Wrong target! Focus on the correct service."
+                );
+              }
+
+              // Spawn new targets after delay
+              setTimeout(spawnHackingTargets, 1000);
+            });
+
+            fpsContainer.appendChild(target);
+            GameState.updateFpsGame({
+              targets: [...GameState.getFpsGame().targets, target],
+            });
+          }
+        }
+
+        // End the hacking mini-game
+        function endHacking(success = false) {
+          const fpsGame = GameState.getFpsGame();
+          clearInterval(fpsGame.interval);
+          GameState.updateFpsGame({ active: false });
+
+          // Update UI
+          document.getElementById("hack-progress-bar").style.width = "0%";
+          document.getElementById("fps-view").classList.add("hidden");
+          document.getElementById("world-map-view").classList.remove("hidden");
+
+          const service = AWSData.getServiceInfo(fpsGame.serviceBeingHacked);
+
+          // Handle results
+          if (success) {
+            const player = GameState.getPlayer();
+
+            // Add to inventory
+            const updatedResources = { ...player.resources };
+            updatedResources[fpsGame.serviceBeingHacked] =
+              (updatedResources[fpsGame.serviceBeingHacked] || 0) + 1;
+
+            // Add to deployed services if not already there
+            const deployedServices = player.deployedServices.includes(
+              fpsGame.serviceBeingHacked
+            )
+              ? player.deployedServices
+              : [...player.deployedServices, fpsGame.serviceBeingHacked];
+
+            // Gain XP
+            const xpGain = 5;
+            let newXp = player.xp + xpGain;
+            let newLevel = player.level;
+            let newMaxHealth = player.maxHealth;
+
+            if (newXp >= newLevel * 10) {
+              newLevel++;
+              newXp = 0;
+              newMaxHealth += 10;
+            }
+
+            GameState.updatePlayer({
+              resources: updatedResources,
+              deployedServices: deployedServices,
+              xp: newXp,
+              level: newLevel,
+              maxHealth: newMaxHealth,
+              health: Math.min(player.maxHealth, player.health + 5), // Small health boost
+            });
+
+            Utils.addToConsole(
+              `> Successfully deployed ${service.name}! +${xpGain} XP`
+            );
+
+            if (newLevel > player.level) {
+              Utils.addToConsole(`> LEVEL UP! You are now Level ${newLevel}`);
+            }
+
+            // Chance to find clues when deploying services
+            if (Math.random() > 0.7 && player.location) {
+              const region = AWSData.getRegionInfo(player.location);
+              const randomEvent =
+                region.events[Math.floor(Math.random() * region.events.length)];
+
+              const caseData = GameState.getCase();
+              GameState.updateCase({
+                clues: [...caseData.clues, randomEvent],
+              });
+
+              Utils.addToConsole(
+                `> Found clue in ${region.name} logs: ${randomEvent}`
+              );
+            }
+
+            // Award certification if all services deployed
+            const allServices = AWSData.getAllServices();
+            if (
+              allServices.every((svc) => player.deployedServices.includes(svc))
+            ) {
+              GameState.updatePlayer({ certs: player.certs + 1 });
+              Utils.addToConsole(
+                `> AWS ARCHITECT CERTIFIED! Earned AWS Solutions Architect certification!`
+              );
+            }
+          } else {
+            Utils.addToConsole(
+              `> Failed to fully analyze ${service.name} data. Health -10`
+            );
+            GameState.updatePlayer({
+              health: GameState.getPlayer().health - 10,
+            });
+          }
+
+          GameState.setPhase("world");
+          UI.updatePlayerStats();
+          UI.updateInventory();
+          UI.updateArchitectureStats();
+          checkWinCondition();
+        }
+
+        // Advance the game time
+        function advanceGameTime() {
+          const caseData = GameState.getCase();
+          GameState.updateCase({
+            gameTime: caseData.gameTime + 1,
+          });
+
+          // New day
+          if (caseData.gameTime >= 24) {
+            GameState.updateCase({
+              gameTime: 0,
+              daysElapsed: caseData.daysElapsed + 1,
+            });
+
+            // Apply passive credit gains
+            const creditGain = 50 + GameState.getPlayer().level * 10;
+            GameState.updatePlayer({
+              credits: GameState.getPlayer().credits + creditGain,
+            });
+
+            Utils.addToConsole(
+              `> Daily AWS budget allocated: ${creditGain} credits added`
+            );
+
+            // Apply passive health recovery during "rest" periods
+            GameState.updatePlayer({
+              health: Math.min(
+                GameState.getPlayer().maxHealth,
+                Math.max(0, GameState.getPlayer().health + 10)
+              ),
+            });
+
+            Utils.addToConsole(
+              "> Passive health recovery during rest period: +10 health"
+            );
+
+            // Chance of random event each day
+            if (Math.random() > 0.5) {
+              setTimeout(triggerRandomEvent, 3000);
+            }
+
+            UI.updatePlayerStats();
+          }
+
+          // Update clock display
+          document.getElementById("game-clock").textContent =
+            Utils.formatGameTime(caseData.daysElapsed, caseData.gameTime);
+        }
+
+        // Check if player has met win conditions
+        function checkWinCondition() {
+          const caseData = GameState.getCase();
+          if (!caseData.targetRegion) return false;
+
+          const player = GameState.getPlayer();
+
+          // Player must have:
+          // 1. Found the secret clue in the target region
+          // 2. Deployed all AWS services
+          // 3. Be present in the target region
+          const targetRegionInfo = AWSData.getRegionInfo(caseData.targetRegion);
+          const hasSecret = caseData.clues.includes(targetRegionInfo.secret);
+          const hasAllServices = AWSData.getAllServices().every((service) => {
+            return player.deployedServices.includes(service);
+          });
+          const inTargetRegion = player.location === caseData.targetRegion;
+
+          if (hasSecret && hasAllServices && inTargetRegion) {
+            // Win the game
+            Utils.addToConsole(
+              "> CRITICAL MESSAGE DECRYPTED: Dr. ███████'s location confirmed!"
+            );
+            Utils.addToConsole(
+              "> QUANTUM ANOMALY NEUTRALIZED: The architect has been rescued!"
+            );
+
+            // Award final certification
+            GameState.updatePlayer({ certs: player.certs + 1 });
+            Utils.addToConsole(
+              "> MISSION COMPLETE. AWSDIRECTIVE OVERWATCH is pleased with your performance."
+            );
+
+            // Show win screen
+            UI.showWinScreen();
+            return true;
+          }
+
+          return false;
+        }
+
+        // Handle console command processing
+        function processConsoleCommand(command) {
+          command = command.trim().toLowerCase();
+          const args = command.split(" ");
+          const baseCommand = args[0];
+          const player = GameState.getPlayer();
+
+          switch (baseCommand) {
+            case "help":
+              Utils.addToConsole("> Available commands:");
+              Utils.addToConsole("> help - Show this help message");
+              Utils.addToConsole("> status - Show current player status");
+              Utils.addToConsole(
+                "> deploy [service] - Deploy an AWS service (ec2, s3, lambda, rds, cloudfront, dynamodb)"
+              );
+              Utils.addToConsole("> scan - Scan current region for clues");
+              Utils.addToConsole(
+                "> investigate - Conduct thorough investigation in current region"
+              );
+              Utils.addToConsole(
+                "> travel [region] - Travel to another AWS region"
+              );
+              break;
+
+            case "status":
+              Utils.addToConsole(
+                `> AGENT STATUS: Level ${player.level} (${player.xp}/${
+                  player.level * 10
+                } XP)`
+              );
+              Utils.addToConsole(
+                `> HEALTH: ${player.health}/${player.maxHealth}`
+              );
+              Utils.addToConsole(`> CREDITS: ${player.credits}`);
+              Utils.addToConsole(
                 `> LOCATION: ${
-                  gameState.player.location
-                    ? awsRegions[gameState.player.location].name
+                  player.location
+                    ? AWSData.getRegionInfo(player.location).name
                     : "Not deployed"
                 }`
               );
-            } else if (command.startsWith("deploy ")) {
-              const service = command.split(" ")[1].toLowerCase();
-              if (awsServices[service]) {
-                if (gameState.player.resources[service] > 0) {
-                  addToConsole(
-                    `> ${awsServices[service].name} already deployed in current region.`
-                  );
-                } else {
-                  if (gameState.player.credits >= awsServices[service].price) {
-                    gameState.player.credits -= awsServices[service].price;
-                    addToConsole(
-                      `> Initiating quantum hack of ${awsServices[service].name}...`
-                    );
-                    startHacking(service);
-                    document
-                      .getElementById("terminal-screen")
-                      .classList.remove("hidden");
-                  } else {
-                    addToConsole(
-                      `> Insufficient credits (need ${awsServices[service].price}) to hack ${awsServices[service].name}`
-                    );
-                  }
-                }
-              } else {
-                addToConsole(
+              Utils.addToConsole(`> AWS CERTIFICATIONS: ${player.certs}`);
+              Utils.addToConsole(
+                `> DAYS ELAPSED: ${GameState.getCase().daysElapsed + 1}`
+              );
+              break;
+
+            case "deploy":
+              if (args.length < 2) {
+                Utils.addToConsole(
+                  "> Specify a service to deploy: ec2, s3, lambda, rds, cloudfront, dynamodb"
+                );
+                return;
+              }
+
+              const service = args[1];
+              if (!AWSData.getServiceInfo(service)) {
+                Utils.addToConsole(
                   "> Unknown AWS service. Try: ec2, s3, lambda, rds, cloudfront, dynamodb"
                 );
+                return;
               }
-            } else if (command === "scan") {
-              if (gameState.player.location) {
-                const region = awsRegions[gameState.player.location];
-                addToConsole(`> Scanning ${region.name}...`);
-                setTimeout(() => {
+
+              if (player.resources[service] > 0) {
+                Utils.addToConsole(
+                  `> ${
+                    AWSData.getServiceInfo(service).name
+                  } already deployed in current region.`
+                );
+                return;
+              }
+
+              if (player.credits < AWSData.getServiceInfo(service).price) {
+                Utils.addToConsole(
+                  `> Insufficient credits (need ${
+                    AWSData.getServiceInfo(service).price
+                  }) to hack ${AWSData.getServiceInfo(service).name}`
+                );
+                return;
+              }
+
+              GameState.updatePlayer({
+                credits: player.credits - AWSData.getServiceInfo(service).price,
+              });
+              UI.updatePlayerStats();
+
+              Utils.addToConsole(
+                `> Initiating quantum hack of ${
+                  AWSData.getServiceInfo(service).name
+                }...`
+              );
+
+              // Start hacking mini-game after delay
+              setTimeout(() => startHacking(service), 1000);
+              break;
+
+            case "scan":
+              if (!player.location) {
+                Utils.addToConsole(
+                  "> Not currently deployed to any region. Use 'travel [region]' first."
+                );
+                return;
+              }
+
+              const region = AWSData.getRegionInfo(player.location);
+              Utils.addToConsole(`> Scanning ${region.name}...`);
+
+              setTimeout(() => {
+                // 50% chance to find a clue
+                if (Math.random() > 0.5) {
                   const randomEvent =
                     region.events[
                       Math.floor(Math.random() * region.events.length)
                     ];
-                  gameState.case.clues.push(randomEvent);
-                  addToConsole(`> Found clue: ${randomEvent}`);
+                  const caseData = GameState.getCase();
 
-                  if (!gameState.case.targetRegion && Math.random() > 0.8) {
-                    gameState.case.targetRegion = gameState.player.location;
-                    gameState.case.currentLead = `Strong evidence points to ${region.name}. Investigate thoroughly!`;
-                    document.getElementById("current-lead").textContent =
-                      gameState.case.currentLead;
-                    addToConsole(
+                  GameState.updateCase({
+                    clues: [...caseData.clues, randomEvent],
+                    lastCoordinates: region.name,
+                  });
+
+                  Utils.addToConsole(`> Found clue: ${randomEvent}`);
+                  UI.updateCaseFiles();
+
+                  // Small chance this is the target region
+                  if (!caseData.targetRegion && Math.random() > 0.8) {
+                    GameState.updateCase({
+                      targetRegion: player.location,
+                      currentLead: `Strong evidence points to ${region.name}. Investigate thoroughly!`,
+                    });
+
+                    Utils.addToConsole(
                       `> CRITICAL: Strong evidence points to ${region.name} as key location!`
                     );
                   }
-                }, 2000);
-              } else {
-                addToConsole(
-                  "> Not currently deployed to any region. Use 'travel [region]' first."
-                );
-              }
-            } else if (command === "investigate") {
-              if (gameState.player.location) {
-                if (
-                  gameState.case.targetRegion &&
-                  gameState.player.location === gameState.case.targetRegion
-                ) {
-                  const region = awsRegions[gameState.player.location];
+                } else {
+                  Utils.addToConsole("> Scan completed. No new clues found.");
+                }
+              }, 2000);
+              break;
 
-                  if (gameState.case.clues.includes(region.secret)) {
-                    checkForWin();
-                  } else {
-                    addToConsole(
-                      "> Deep investigation reveals nothing new. Maybe we missed something?"
-                    );
-                  }
-                } else {
-                  addToConsole(
-                    "> No significant leads to investigate here. Try another region."
-                  );
-                }
-              } else {
-                addToConsole(
+            case "investigate":
+              if (!player.location) {
+                Utils.addToConsole(
                   "> Not currently deployed to any region. Use 'travel [region]' first."
                 );
+                return;
               }
-            } else if (command.startsWith("travel ")) {
-              const regionId = command.split(" ")[1];
-              if (awsRegions[regionId]) {
-                if (gameState.player.location === regionId) {
-                  addToConsole(`> Already in ${awsRegions[regionId].name}`);
+
+              const caseData = GameState.getCase();
+              if (
+                caseData.targetRegion &&
+                player.location === caseData.targetRegion
+              ) {
+                const region = AWSData.getRegionInfo(player.location);
+
+                // Check if player has found the secret
+                if (caseData.clues.includes(region.secret)) {
+                  checkWinCondition();
                 } else {
-                  addToConsole(
-                    `> Preparing to redeploy infrastructure to ${awsRegions[regionId].name}`
+                  Utils.addToConsole(
+                    "> Deep investigation reveals nothing new. Maybe we missed something?"
                   );
-                  setTimeout(() => {
-                    travelToRegion(regionId);
-                  }, 2000);
                 }
               } else {
-                addToConsole(
+                Utils.addToConsole(
+                  "> No significant leads to investigate here. Try another region."
+                );
+              }
+              break;
+
+            case "travel":
+              if (args.length < 2) {
+                Utils.addToConsole(
+                  "> Specify a region to travel to: us-east-1, us-west-2, eu-west-1, etc."
+                );
+                return;
+              }
+
+              const regionId = args[1];
+              if (!AWSData.getRegionInfo(regionId)) {
+                Utils.addToConsole(
                   "> Unknown AWS region. Try: us-east-1, us-west-2, eu-west-1, etc."
+                );
+                return;
+              }
+
+              if (player.location === regionId) {
+                Utils.addToConsole(
+                  `> Already in ${AWSData.getRegionInfo(regionId).name}`
+                );
+                return;
+              }
+
+              Utils.addToConsole(
+                `> Preparing to redeploy infrastructure to ${
+                  AWSData.getRegionInfo(regionId).name
+                }`
+              );
+
+              setTimeout(() => {
+                travelToRegion(regionId);
+              }, 2000);
+              break;
+
+            case "debug":
+              if (args[1] === "credits") {
+                GameState.updatePlayer({ credits: 1000 });
+                UI.updatePlayerStats();
+                Utils.addToConsole("> DEBUG: Credits set to 1000");
+              } else if (args[1] === "win") {
+                const allServices = AWSData.getAllServices();
+                GameState.updatePlayer({
+                  resources: allServices.reduce((acc, svc) => {
+                    acc[svc] = 1;
+                    return acc;
+                  }, {}),
+                  deployedServices: allServices,
+                });
+
+                const region = AWSData.getAllRegions()[0];
+                const caseInfo = GameState.getCase();
+
+                GameState.updateCase({
+                  targetRegion: region,
+                  currentLead: `Strong evidence points to ${
+                    AWSData.getRegionInfo(region).name
+                  }. Investigate thoroughly!`,
+                  clues: [
+                    ...caseInfo.clues,
+                    AWSData.getRegionInfo(region).secret,
+                  ],
+                });
+
+                GameState.updatePlayer({ location: region });
+                UI.updateInventory();
+                UI.updateArchitectureStats();
+                UI.updateCaseFiles();
+
+                Utils.addToConsole(
+                  "> DEBUG: Win condition set up. Use 'investigate' to win."
+                );
+              } else {
+                Utils.addToConsole("> Unknown debug command");
+              }
+              break;
+
+            default:
+              Utils.addToConsole(
+                "> Command not recognized. Type 'help' for available commands."
+              );
+          }
+        }
+
+        // Update player's resources (for events that grant resources)
+        function updatePlayerResources() {
+          UI.updateInventory();
+          UI.updateArchitectureStats();
+        }
+
+        return {
+          startGame,
+          travelToRegion,
+          triggerRandomEvent,
+          handleEventChoice,
+          startHacking,
+          spawnHackingTargets,
+          endHacking,
+          advanceGameTime,
+          checkWinCondition,
+          processConsoleCommand,
+          updatePlayerResources,
+        };
+      })();
+
+      // =============================================
+      // EVENT LISTENERS
+      // =============================================
+      document.addEventListener("DOMContentLoaded", () => {
+        // Start game button
+        document
+          .getElementById("start-game-btn")
+          .addEventListener("click", GameLogic.startGame);
+
+        // Restart game buttons
+        document
+          .getElementById("restart-game-btn")
+          .addEventListener("click", () => {
+            GameState.reset();
+            document.getElementById("game-over-modal").classList.add("hidden");
+            document.getElementById("start-modal").classList.remove("hidden");
+            UI.updatePlayerStats();
+            UI.updateInventory();
+
+            // Reset mission briefing
+            document.getElementById("mission-briefing").style.width = "0";
+            document.getElementById("mission-briefing").style.animation =
+              "none";
+            document.getElementById("mission-briefing").textContent = "";
+            document
+              .getElementById("start-game-btn")
+              .classList.add("opacity-50");
+          });
+
+        document
+          .getElementById("win-restart-btn")
+          .addEventListener("click", () => {
+            GameState.reset();
+            document.getElementById("win-modal").classList.add("hidden");
+            document.getElementById("start-modal").classList.remove("hidden");
+            UI.updatePlayerStats();
+            UI.updateInventory();
+
+            // Reset mission briefing
+            document.getElementById("mission-briefing").style.width = "0";
+            document.getElementById("mission-briefing").style.animation =
+              "none";
+            document.getElementById("mission-briefing").textContent = "";
+            document
+              .getElementById("start-game-btn")
+              .classList.add("opacity-50");
+          });
+
+        // Region clicks
+        document.querySelectorAll("#world-map path").forEach((path) => {
+          path.addEventListener("click", () => {
+            if (GameState.getPhase() !== "world") return;
+
+            const region = path.dataset.region;
+            if (!GameState.getPlayer().location) {
+              // Initial deployment
+              GameLogic.travelToRegion(region);
+            } else {
+              // Show travel confirmation
+              Utils.addToConsole(
+                `> Preparing to redeploy infrastructure to ${
+                  AWSData.getRegionInfo(region).name
+                }`
+              );
+              setTimeout(() => {
+                GameLogic.travelToRegion(region);
+              }, 2000);
+            }
+          });
+
+          // Show region info on hover
+          path.addEventListener("mouseenter", () => {
+            if (GameState.getPhase() === "world") {
+              UI.updateRegionInfo(path.dataset.region);
+            }
+          });
+
+          path.addEventListener("mouseleave", () => {
+            document.getElementById("region-info").classList.add("hidden");
+          });
+        });
+
+        // Investigate button
+        document
+          .getElementById("investigate-btn")
+          .addEventListener("click", () => {
+            const player = GameState.getPlayer();
+            if (!player.location) return;
+
+            // Cost to investigate
+            const cost = 20;
+            if (player.credits >= cost) {
+              GameState.updatePlayer({ credits: player.credits - cost });
+              UI.updatePlayerStats();
+
+              // Chance to find clue
+              if (Math.random() > 0.4) {
+                const region = AWSData.getRegionInfo(player.location);
+                const randomEvent =
+                  region.events[
+                    Math.floor(Math.random() * region.events.length)
+                  ];
+                const caseData = GameState.getCase();
+
+                GameState.updateCase({
+                  clues: [...caseData.clues, randomEvent],
+                  lastCoordinates: region.name,
+                });
+
+                UI.updateCaseFiles();
+
+                // Small chance this is the target region
+                if (!caseData.targetRegion && Math.random() > 0.8) {
+                  GameState.updateCase({
+                    targetRegion: player.location,
+                    currentLead: `Strong evidence points to ${region.name}. Investigate thoroughly!`,
+                  });
+
+                  Utils.addToConsole(
+                    `> CRITICAL CLUE: ${region.name} may hold the key to Dr. ███████'s location!`
+                  );
+                } else {
+                  Utils.addToConsole(
+                    `> Found clue in ${region.name}: ${randomEvent}`
+                  );
+                }
+              } else {
+                Utils.addToConsole(
+                  `> Investigation in ${region.name} revealed nothing unusual.`
                 );
               }
             } else {
-              addToConsole(
-                "> Command not recognized. Type 'help' for available commands."
-              );
+              Utils.addToConsole("> Insufficient credits for investigation");
+              Utils.shakeElement("investigate-btn");
             }
-          }
+          });
+
+        // Service scan button
+        document
+          .getElementById("service-scan-btn")
+          .addEventListener("click", () => {
+            const player = GameState.getPlayer();
+            if (!player.location) return;
+
+            // Cost to scan
+            const cost = 15;
+            if (player.credits >= cost) {
+              GameState.updatePlayer({ credits: player.credits - cost });
+              UI.updatePlayerStats();
+
+              // 60% chance to reveal a service
+              if (Math.random() > 0.4) {
+                const region = AWSData.getRegionInfo(player.location);
+                const allServices = AWSData.getAllServices();
+                const missingServices = allServices.filter(
+                  (svc) => !player.deployedServices.includes(svc)
+                );
+
+                if (missingServices.length > 0) {
+                  const randomService =
+                    missingServices[
+                      Math.floor(Math.random() * missingServices.length)
+                    ];
+                  const serviceInfo = AWSData.getServiceInfo(randomService);
+
+                  Utils.addToConsole(
+                    `> Service scan detected available ${serviceInfo.name} in ${region.name}`
+                  );
+                } else {
+                  Utils.addToConsole(
+                    `> Service scan complete. All services already deployed in ${region.name}.`
+                  );
+                }
+              } else {
+                Utils.addToConsole(
+                  `> Service scan completed. No new services detected.`
+                );
+              }
+            } else {
+              Utils.addToConsole("> Insufficient credits for service scan");
+              Utils.shakeElement("service-scan-btn");
+            }
+          });
+
+        // AWS Service buttons
+        document.querySelectorAll(".service-btn").forEach((button) => {
+          button.addEventListener("click", () => {
+            const service = button.dataset.service;
+            const player = GameState.getPlayer();
+
+            // Check if already hacked this service
+            if (player.resources[service] > 0) {
+              Utils.addToConsole(
+                `> ${
+                  AWSData.getServiceInfo(service).name
+                } already deployed in current region.`
+              );
+              return;
+            }
+
+            // Check if we can afford it
+            const serviceInfo = AWSData.getServiceInfo(service);
+            if (player.credits >= serviceInfo.price) {
+              GameState.updatePlayer({
+                credits: player.credits - serviceInfo.price,
+              });
+              UI.updatePlayerStats();
+
+              // Start hacking mini-game
+              Utils.addToConsole(
+                `> Initiating quantum hack of ${serviceInfo.name}...`
+              );
+
+              // Show terminal during hacking
+              document.getElementById("terminal-screen").innerHTML = "";
+
+              setTimeout(() => {
+                GameLogic.startHacking(service);
+              }, 1000);
+            } else {
+              Utils.addToConsole(
+                `> Insufficient credits (need ${serviceInfo.price}) to hack ${serviceInfo.name}`
+              );
+              Utils.shakeElement(button.id || button.className);
+            }
+          });
         });
 
-      document.getElementById("close-aws-doc").addEventListener("click", () => {
-        document.getElementById("aws-doc-modal").classList.add("hidden");
+        // Console command input
+        document
+          .getElementById("console-input")
+          .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+              const command = document
+                .getElementById("console-input")
+                .value.trim();
+              if (command) {
+                Utils.addToConsole(`> ${command}`);
+                document.getElementById("console-input").value = "";
+
+                // Process command
+                GameLogic.processConsoleCommand(command);
+              }
+            }
+          });
+
+        document
+          .getElementById("console-submit")
+          .addEventListener("click", () => {
+            const command = document
+              .getElementById("console-input")
+              .value.trim();
+            if (command) {
+              Utils.addToConsole(`> ${command}`);
+              document.getElementById("console-input").value = "";
+
+              // Process command
+              GameLogic.processConsoleCommand(command);
+            }
+          });
+
+        // Toggle clues visibility
+        document
+          .getElementById("toggle-clues")
+          .addEventListener("click", UI.toggleCluesVisibility);
+
+        // Close AWS doc modal
+        document
+          .getElementById("close-aws-doc")
+          .addEventListener("click", () => {
+            document.getElementById("aws-doc-modal").classList.add("hidden");
+          });
+
+        // Debug command listener (not shown to players)
+        if (GameState.isDebug()) {
+          document.addEventListener("keydown", (e) => {
+            if (e.ctrlKey && e.key === "d") {
+              Utils.simulateTyping("debug credits");
+            }
+          });
+        }
+
+        // Initialize UI
+        UI.updatePlayerStats();
+        UI.updateInventory();
+        UI.updateCaseFiles();
+
+        // Type welcome message
+        setTimeout(() => {
+          document.getElementById("mission-briefing").style.animation =
+            "typewriter 4s steps(40) 1s 1 normal both";
+        }, 1000);
       });
-
-      // Initialize game
-      updatePlayerStats();
-      updateInventory();
-
-      // Type welcome message
-      setTimeout(() => {
-        document.getElementById("mission-briefing").style.animation =
-          "typewriter 4s steps(40) 1s 1 normal both";
-      }, 1000);
     </script>
   </body>
 </html>
