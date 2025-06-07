@@ -96,20 +96,25 @@
       .hacking {
         animation: hackEffect 0.5s linear infinite;
       }
-      .world-map path {
+      .world-map circle {
         transition: all 0.3s ease;
-        fill: #374151;
-        stroke: #6b7280;
       }
-      .world-map path:hover {
-        fill: #10b981;
+      .world-map circle:hover {
+        transform: scale(1.2);
         cursor: pointer;
       }
-      .world-map path.visited {
-        fill: #3b82f6;
+      .world-map circle.visited {
+        fill: #3b82f6 !important;
+        stroke: #60a5fa !important;
       }
-      .world-map path.current {
-        fill: #ef4444;
+      .world-map circle.current {
+        fill: #ef4444 !important;
+        stroke: #f87171 !important;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1; }
       }
       .fps-target {
         width: 40px;
@@ -323,59 +328,102 @@
           </div>
 
           <div class="relative h-96">
-            <svg
-              id="world-map"
-              class="w-full h-full"
-              viewBox="0 0 800 450"
-              xmlns="http://www.w3.org/2000/svg"
+            <!-- Background world map image -->
+            <div 
+              class="w-full h-full bg-cover bg-center bg-no-repeat rounded-lg"
+              style="background-image: url('assets/images/global-map904x384.png')"
             >
-              <!-- Simplified world map with major AWS regions -->
-              <path
-                id="n-virginia"
-                data-region="us-east-1"
-                d="M220,150C230,140 250,130 270,140C290,150 300,170 290,190C280,210 260,220 240,210C220,200 210,180 220,160Z"
-              />
-              <path
-                id="ohio"
-                data-region="us-east-2"
-                d="M200,160C210,150 230,140 240,150C250,160 250,180 240,190C230,200 210,200 200,190C190,180 190,170 200,160Z"
-              />
-              <path
-                id="oregon"
-                data-region="us-west-2"
-                d="M120,150C130,140 150,130 170,140C190,150 190,170 180,190C170,210 150,210 130,200C120,190 110,170 120,150Z"
-              />
-              <path
-                id="ireland"
-                data-region="eu-west-1"
-                d="M440,120C450,110 470,110 480,120C490,130 490,150 480,160C470,170 450,170 440,160C430,150 430,130 440,120Z"
-              />
-              <path
-                id="frankfurt"
-                data-region="eu-central-1"
-                d="M470,150C480,140 500,140 510,150C520,160 520,180 510,190C500,200 480,200 470,190C460,180 460,160 470,150Z"
-              />
-              <path
-                id="tokyo"
-                data-region="ap-northeast-1"
-                d="M680,180C690,170 710,170 720,180C730,190 730,210 720,220C710,230 690,230 680,220C670,210 670,190 680,180Z"
-              />
-              <path
-                id="singapore"
-                data-region="ap-southeast-1"
-                d="M650,250C660,240 680,240 690,250C700,260 700,280 690,290C680,300 660,300 650,290C640,280 640,260 650,250Z"
-              />
-              <path
-                id="sydney"
-                data-region="ap-southeast-2"
-                d="M700,300C710,290 730,290 740,300C750,310 750,330 740,340C730,350 710,350 700,340C690,330 690,310 700,300Z"
-              />
-              <path
-                id="saopaulo"
-                data-region="sa-east-1"
-                d="M270,250C280,240 300,240 310,250C320,260 320,280 310,290C300,300 280,300 270,290C260,280 260,260 270,250Z"
-              />
-            </svg>
+              <!-- Clickable AWS regions overlay -->
+              <svg
+                id="world-map"
+                class="w-full h-full"
+                viewBox="0 0 904 384"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <!-- AWS Region markers as circles -->
+                <circle
+                  id="n-virginia"
+                  data-region="us-east-1"
+                  cx="220"
+                  cy="150"
+                  r="15"
+                  class="region-marker fill-blue-500 stroke-blue-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="N. Virginia"
+                />
+                <circle
+                  id="ohio"
+                  data-region="us-east-2"
+                  cx="200"
+                  cy="170"
+                  r="15"
+                  class="region-marker fill-blue-500 stroke-blue-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Ohio"
+                />
+                <circle
+                  id="oregon"
+                  data-region="us-west-2"
+                  cx="120"
+                  cy="150"
+                  r="15"
+                  class="region-marker fill-blue-500 stroke-blue-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Oregon"
+                />
+                <circle
+                  id="ireland"
+                  data-region="eu-west-1"
+                  cx="440"
+                  cy="120"
+                  r="15"
+                  class="region-marker fill-green-500 stroke-green-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Ireland"
+                />
+                <circle
+                  id="frankfurt"
+                  data-region="eu-central-1"
+                  cx="470"
+                  cy="150"
+                  r="15"
+                  class="region-marker fill-green-500 stroke-green-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Frankfurt"
+                />
+                <circle
+                  id="tokyo"
+                  data-region="ap-northeast-1"
+                  cx="680"
+                  cy="180"
+                  r="15"
+                  class="region-marker fill-red-500 stroke-red-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Tokyo"
+                />
+                <circle
+                  id="singapore"
+                  data-region="ap-southeast-1"
+                  cx="650"
+                  cy="250"
+                  r="15"
+                  class="region-marker fill-red-500 stroke-red-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Singapore"
+                />
+                <circle
+                  id="sydney"
+                  data-region="ap-southeast-2"
+                  cx="700"
+                  cy="300"
+                  r="15"
+                  class="region-marker fill-red-500 stroke-red-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="Sydney"
+                />
+                <circle
+                  id="saopaulo"
+                  data-region="sa-east-1"
+                  cx="270"
+                  cy="250"
+                  r="15"
+                  class="region-marker fill-yellow-500 stroke-yellow-300 stroke-2 opacity-80 hover:opacity-100 cursor-pointer transition-all"
+                  data-name="São Paulo"
+                />
+              </svg>
+            </div>
             <div
               id="current-location"
               class="absolute top-4 left-4 bg-gray-900 bg-opacity-80 px-3 py-1 rounded text-sm"
@@ -429,7 +477,7 @@
               <span
                 id="hack-timer"
                 class="bg-red-600 text-white px-2 py-1 rounded text-sm mr-2"
-                >30s</span
+                >45s</span
               >
               <span
                 id="hack-score"
@@ -618,6 +666,30 @@
               <i class="fas fa-list-alt mb-1"></i>
               <span class="text-xs">DynamoDB</span>
               <span class="text-xxs text-gray-400">180 cr</span>
+            </button>
+            <button
+              class="service-btn bg-orange-700 hover:bg-orange-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="sns"
+            >
+              <i class="fas fa-bell mb-1"></i>
+              <span class="text-xs">SNS</span>
+              <span class="text-xxs text-gray-400">60 cr</span>
+            </button>
+            <button
+              class="service-btn bg-indigo-700 hover:bg-indigo-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="sqs"
+            >
+              <i class="fas fa-inbox mb-1"></i>
+              <span class="text-xs">SQS</span>
+              <span class="text-xxs text-gray-400">75 cr</span>
+            </button>
+            <button
+              class="service-btn bg-teal-700 hover:bg-teal-800 p-2 rounded flex flex-col items-center justify-center"
+              data-service="apigateway"
+            >
+              <i class="fas fa-exchange-alt mb-1"></i>
+              <span class="text-xs">API Gateway</span>
+              <span class="text-xxs text-gray-400">120 cr</span>
             </button>
           </div>
           <div class="mt-3 bg-gray-700 p-2 rounded text-center">
@@ -1008,6 +1080,45 @@
             price: 180,
             icon: "fa-list-alt",
             color: "pink",
+          },
+          sns: {
+            name: "Amazon SNS",
+            description:
+              "Simple Notification Service is a fully managed messaging service for both application-to-application and application-to-person communication.",
+            use: "Send notifications and messages to distributed systems and mobile devices.",
+            security: 4,
+            performance: 4,
+            scalability: 5,
+            cost: 2,
+            price: 60,
+            icon: "fa-bell",
+            color: "orange",
+          },
+          sqs: {
+            name: "Amazon SQS",
+            description:
+              "Simple Queue Service is a fully managed message queuing service that enables you to decouple and scale microservices, distributed systems, and serverless applications.",
+            use: "Decouple components of cloud applications with reliable message queuing.",
+            security: 4,
+            performance: 4,
+            scalability: 5,
+            cost: 2,
+            price: 75,
+            icon: "fa-inbox",
+            color: "indigo",
+          },
+          apigateway: {
+            name: "Amazon API Gateway",
+            description:
+              "Fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure APIs at any scale.",
+            use: "Create and manage APIs for your applications and services.",
+            security: 4,
+            performance: 3,
+            scalability: 5,
+            cost: 3,
+            price: 120,
+            icon: "fa-exchange-alt",
+            color: "teal",
           },
         };
 
@@ -2369,7 +2480,7 @@
 
             // Update UI
             document
-              .querySelector(`#world-map path[data-region="${regionId}"]`)
+              .querySelector(`#world-map circle[data-region="${regionId}"]`)
               .classList.add("current", "visited");
             document
               .getElementById("current-location")
@@ -2389,7 +2500,7 @@
             // Already deployed somewhere
             document
               .querySelector(
-                `#world-map path[data-region="${player.location}"]`
+                `#world-map circle[data-region="${player.location}"]`
               )
               .classList.remove("current");
 
@@ -2597,7 +2708,7 @@
           GameState.updateFpsGame({
             active: true,
             score: 0,
-            timeLeft: 30,
+            timeLeft: 45,
             serviceBeingHacked: service,
           });
 
@@ -2607,7 +2718,7 @@
           document.getElementById("world-map-view").classList.add("hidden");
           document.getElementById("fps-view").classList.remove("hidden");
           document.getElementById("hack-progress-bar").style.width = "0%";
-          document.getElementById("hack-timer").textContent = "30s";
+          document.getElementById("hack-timer").textContent = "45s";
           document.getElementById("hack-score").textContent = "0";
 
           // Clear terminal
@@ -2659,9 +2770,9 @@
           // Determine number of targets based on difficulty
           const player = GameState.getPlayer();
           const targetCount =
-            3 +
+            4 +
             Math.floor(player.level / 2) +
-            (player.deployedServices.length > 3 ? 1 : 0);
+            (player.deployedServices.length > 3 ? 2 : 1);
 
           for (let i = 0; i < targetCount; i++) {
             const target = document.createElement("div");
@@ -2682,13 +2793,16 @@
               "fa-table",
               "fa-network-wired",
               "fa-list-alt",
+              "fa-bell",
+              "fa-inbox",
+              "fa-exchange-alt",
             ];
             const randomService =
               services[Math.floor(Math.random() * services.length)];
 
-            // Correct target matches the service being hacked
+            // Correct target matches the service being hacked OR 60% chance for any target
             const isCorrect =
-              randomService === AWSData.getServiceInfo(service).icon;
+              randomService === AWSData.getServiceInfo(service).icon || Math.random() > 0.4;
             if (isCorrect) {
               target.dataset.correct = "true";
             }
@@ -2715,7 +2829,7 @@
                   fpsGame.score + 1;
 
                 // Update progress
-                const progress = (fpsGame.score / 15) * 100;
+                const progress = (fpsGame.score / 10) * 100;
                 document.getElementById(
                   "hack-progress-bar"
                 ).style.width = `${Math.min(progress, 100)}%`;
@@ -2960,7 +3074,7 @@
               Utils.addToConsole("> help - Show this help message");
               Utils.addToConsole("> status - Show current player status");
               Utils.addToConsole(
-                "> deploy [service] - Deploy an AWS service (ec2, s3, lambda, rds, cloudfront, dynamodb)"
+                "> deploy [service] - Deploy an AWS service (ec2, s3, lambda, rds, cloudfront, dynamodb, sns, sqs, apigateway)"
               );
               Utils.addToConsole("> scan - Scan current region for clues");
               Utils.addToConsole(
@@ -2968,6 +3082,9 @@
               );
               Utils.addToConsole(
                 "> travel [region] - Travel to another AWS region"
+              );
+              Utils.addToConsole(
+                "> aws [service] [command] - Use AWS CLI (e.g., aws sns create-topic --name MyTopic)"
               );
               break;
 
@@ -2997,7 +3114,7 @@
             case "deploy":
               if (args.length < 2) {
                 Utils.addToConsole(
-                  "> Specify a service to deploy: ec2, s3, lambda, rds, cloudfront, dynamodb"
+                  "> Specify a service to deploy: ec2, s3, lambda, rds, cloudfront, dynamodb, sns, sqs, apigateway"
                 );
                 return;
               }
@@ -3005,7 +3122,7 @@
               const service = args[1];
               if (!AWSData.getServiceInfo(service)) {
                 Utils.addToConsole(
-                  "> Unknown AWS service. Try: ec2, s3, lambda, rds, cloudfront, dynamodb"
+                  "> Unknown AWS service. Try: ec2, s3, lambda, rds, cloudfront, dynamodb, sns, sqs, apigateway"
                 );
                 return;
               }
@@ -3194,6 +3311,119 @@
               }
               break;
 
+            case "aws":
+              if (args.length < 2) {
+                Utils.addToConsole("> AWS CLI - Specify a service: sns, sqs, apigateway, ec2, s3, lambda");
+                Utils.addToConsole("> Example: aws sns create-topic --name MyTopic");
+                return;
+              }
+
+              const awsService = args[1];
+              const awsCommand = args[2];
+
+              switch (awsService) {
+                case "sns":
+                  if (awsCommand === "create-topic" && args.includes("--name")) {
+                    const nameIndex = args.indexOf("--name") + 1;
+                    const topicName = args[nameIndex] || "MyTopic";
+                    Utils.addToConsole(`> Creating SNS topic: ${topicName}`);
+                    Utils.addToConsole(`> Topic ARN: arn:aws:sns:${player.location || 'us-east-1'}:123456789012:${topicName}`);
+                  } else if (awsCommand === "list-topics") {
+                    Utils.addToConsole("> Listing SNS topics:");
+                    Utils.addToConsole(`> arn:aws:sns:${player.location || 'us-east-1'}:123456789012:MyTopic`);
+                    Utils.addToConsole(`> arn:aws:sns:${player.location || 'us-east-1'}:123456789012:AlertTopic`);
+                  } else if (awsCommand === "publish" && args.includes("--topic-arn")) {
+                    Utils.addToConsole("> Message published to SNS topic");
+                    Utils.addToConsole("> MessageId: 12345678-1234-1234-1234-123456789012");
+                  } else {
+                    Utils.addToConsole("> SNS commands: create-topic --name <name>, list-topics, publish --topic-arn <arn> --message <msg>");
+                  }
+                  break;
+
+                case "sqs":
+                  if (awsCommand === "create-queue" && args.includes("--queue-name")) {
+                    const nameIndex = args.indexOf("--queue-name") + 1;
+                    const queueName = args[nameIndex] || "MyQueue";
+                    Utils.addToConsole(`> Creating SQS queue: ${queueName}`);
+                    Utils.addToConsole(`> Queue URL: https://sqs.${player.location || 'us-east-1'}.amazonaws.com/123456789012/${queueName}`);
+                  } else if (awsCommand === "list-queues") {
+                    Utils.addToConsole("> Listing SQS queues:");
+                    Utils.addToConsole(`> https://sqs.${player.location || 'us-east-1'}.amazonaws.com/123456789012/MyQueue`);
+                    Utils.addToConsole(`> https://sqs.${player.location || 'us-east-1'}.amazonaws.com/123456789012/ProcessingQueue`);
+                  } else if (awsCommand === "send-message" && args.includes("--queue-url")) {
+                    Utils.addToConsole("> Message sent to SQS queue");
+                    Utils.addToConsole("> MessageId: abcd1234-5678-90ef-ghij-klmnopqrstuv");
+                  } else {
+                    Utils.addToConsole("> SQS commands: create-queue --queue-name <name>, list-queues, send-message --queue-url <url> --message-body <msg>");
+                  }
+                  break;
+
+                case "apigateway":
+                  if (awsCommand === "create-rest-api" && args.includes("--name")) {
+                    const nameIndex = args.indexOf("--name") + 1;
+                    const apiName = args[nameIndex] || "MyAPI";
+                    Utils.addToConsole(`> Creating API Gateway: ${apiName}`);
+                    Utils.addToConsole(`> API ID: abcdef1234`);
+                    Utils.addToConsole(`> API Endpoint: https://abcdef1234.execute-api.${player.location || 'us-east-1'}.amazonaws.com/prod`);
+                  } else if (awsCommand === "get-rest-apis") {
+                    Utils.addToConsole("> Listing REST APIs:");
+                    Utils.addToConsole(`> MyAPI (abcdef1234) - https://abcdef1234.execute-api.${player.location || 'us-east-1'}.amazonaws.com/prod`);
+                    Utils.addToConsole(`> UserAPI (ghijkl5678) - https://ghijkl5678.execute-api.${player.location || 'us-east-1'}.amazonaws.com/prod`);
+                  } else {
+                    Utils.addToConsole("> API Gateway commands: create-rest-api --name <name>, get-rest-apis");
+                  }
+                  break;
+
+                case "ec2":
+                  if (awsCommand === "describe-instances") {
+                    Utils.addToConsole("> EC2 Instances:");
+                    Utils.addToConsole(`> i-1234567890abcdef0 (running) - t3.micro in ${player.location || 'us-east-1'}a`);
+                    Utils.addToConsole(`> i-0987654321fedcba0 (stopped) - t3.small in ${player.location || 'us-east-1'}b`);
+                  } else if (awsCommand === "run-instances") {
+                    Utils.addToConsole("> Launching EC2 instance...");
+                    Utils.addToConsole(`> Instance ID: i-${Math.random().toString(36).substr(2, 17)}`);
+                  } else {
+                    Utils.addToConsole("> EC2 commands: describe-instances, run-instances --image-id <ami> --instance-type <type>");
+                  }
+                  break;
+
+                case "s3":
+                  if (awsCommand === "ls") {
+                    Utils.addToConsole("> S3 Buckets:");
+                    Utils.addToConsole("> my-app-bucket-12345");
+                    Utils.addToConsole("> data-backup-bucket-67890");
+                    Utils.addToConsole("> logs-archive-bucket-54321");
+                  } else if (awsCommand === "mb" && args[3]) {
+                    const bucketName = args[3].replace("s3://", "");
+                    Utils.addToConsole(`> Creating S3 bucket: ${bucketName}`);
+                    Utils.addToConsole(`> Bucket created in region: ${player.location || 'us-east-1'}`);
+                  } else {
+                    Utils.addToConsole("> S3 commands: ls, mb s3://bucket-name, cp file.txt s3://bucket/");
+                  }
+                  break;
+
+                case "lambda":
+                  if (awsCommand === "list-functions") {
+                    Utils.addToConsole("> Lambda Functions:");
+                    Utils.addToConsole(`> ProcessData (python3.9) - Last modified: ${new Date().toISOString()}`);
+                    Utils.addToConsole(`> HandleRequests (nodejs18.x) - Last modified: ${new Date().toISOString()}`);
+                  } else if (awsCommand === "invoke" && args.includes("--function-name")) {
+                    const nameIndex = args.indexOf("--function-name") + 1;
+                    const functionName = args[nameIndex] || "MyFunction";
+                    Utils.addToConsole(`> Invoking Lambda function: ${functionName}`);
+                    Utils.addToConsole(`> StatusCode: 200`);
+                    Utils.addToConsole(`> ExecutedVersion: $LATEST`);
+                  } else {
+                    Utils.addToConsole("> Lambda commands: list-functions, invoke --function-name <name>");
+                  }
+                  break;
+
+                default:
+                  Utils.addToConsole(`> Unknown AWS service: ${awsService}`);
+                  Utils.addToConsole("> Supported services: sns, sqs, apigateway, ec2, s3, lambda");
+              }
+              break;
+
             default:
               Utils.addToConsole(
                 "> Command not recognized. Type 'help' for available commands."
@@ -3271,7 +3501,7 @@
           });
 
         // Region clicks
-        document.querySelectorAll("#world-map path").forEach((path) => {
+        document.querySelectorAll("#world-map circle").forEach((path) => {
           path.addEventListener("click", () => {
             if (GameState.getPhase() !== "world") return;
 
