@@ -16,3 +16,17 @@
 10.2.9.135 - - [07/Jun/2025 21:37:41] "GET /css/main.css HTTP/1.1" 304 -
 10.2.9.135 - - [07/Jun/2025 21:37:41] "GET /questions.json HTTP/1.1" 304 -
 10.2.9.135 - - [07/Jun/2025 21:37:41] "GET /assets/images/global-map904x384.png HTTP/1.1" 304 -
+10.2.56.141 - - [07/Jun/2025 21:41:44] "GET / HTTP/1.1" 304 -
+10.2.56.141 - - [07/Jun/2025 21:46:34] "GET / HTTP/1.1" 304 -
+10.2.74.140 - - [07/Jun/2025 21:46:54] "GET /css/main.css HTTP/1.1" 304 -
+10.2.74.140 - - [07/Jun/2025 21:46:54] "GET /game.js HTTP/1.1" 304 -
+10.2.74.140 - - [07/Jun/2025 21:46:54] "GET /assets/images/global-map904x384.png HTTP/1.1" 200 -
+10.2.74.140 - - [07/Jun/2025 21:46:54] "GET /questions.json HTTP/1.1" 304 -
+10.2.9.135 - - [07/Jun/2025 21:46:55] "GET /css/main.css HTTP/1.1" 200 -
+10.2.9.135 - - [07/Jun/2025 21:46:55] "GET /game.js HTTP/1.1" 200 -
+10.2.74.140 - - [07/Jun/2025 21:46:55] code 404, message File not found
+10.2.74.140 - - [07/Jun/2025 21:46:55] "GET /favicon.ico HTTP/1.1" 404 -
+10.2.9.135 - - [07/Jun/2025 21:46:55] "HEAD /assets/images/global-map904x384.png HTTP/1.1" 200 -
+10.2.9.135 - - [07/Jun/2025 21:46:55] "GET /assets/images/global-map904x384.png HTTP/1.1" 200 -
+10.2.58.81 - - [07/Jun/2025 21:47:00] code 404, message File not found
+10.2.58.81 - - [07/Jun/2025 21:47:00] "GET /robots.txt HTTP/1.1" 404 -
