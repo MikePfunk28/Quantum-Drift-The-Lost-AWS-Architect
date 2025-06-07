@@ -3265,7 +3265,7 @@
               );
 
               setTimeout(() => {
-                travelToRegion(regionId);
+                showTravelQuestion(regionId);
               }, 2000);
               break;
 
@@ -3517,7 +3517,7 @@
                 }`
               );
               setTimeout(() => {
-                GameLogic.travelToRegion(region);
+                showTravelQuestion(region);
               }, 2000);
             }
           });
@@ -3547,42 +3547,8 @@
               GameState.updatePlayer({ credits: player.credits - cost });
               UI.updatePlayerStats();
 
-              // Chance to find clue
-              if (Math.random() > 0.4) {
-                const region = AWSData.getRegionInfo(player.location);
-                const randomEvent =
-                  region.events[
-                    Math.floor(Math.random() * region.events.length)
-                  ];
-                const caseData = GameState.getCase();
-
-                GameState.updateCase({
-                  clues: [...caseData.clues, randomEvent],
-                  lastCoordinates: region.name,
-                });
-
-                UI.updateCaseFiles();
-
-                // Small chance this is the target region
-                if (!caseData.targetRegion && Math.random() > 0.8) {
-                  GameState.updateCase({
-                    targetRegion: player.location,
-                    currentLead: `Strong evidence points to ${region.name}. Investigate thoroughly!`,
-                  });
-
-                  Utils.addToConsole(
-                    `> CRITICAL CLUE: ${region.name} may hold the key to Dr. ███████'s location!`
-                  );
-                } else {
-                  Utils.addToConsole(
-                    `> Found clue in ${region.name}: ${randomEvent}`
-                  );
-                }
-              } else {
-                Utils.addToConsole(
-                  `> Investigation in ${region.name} revealed nothing unusual.`
-                );
-              }
+              // Show question before investigation
+              showInvestigationQuestion();
             } else {
               Utils.addToConsole("> Insufficient credits for investigation");
               Utils.shakeElement("investigate-btn");
@@ -3827,14 +3793,14 @@
             feedbackTitle.className = 'font-bold mb-2 text-red-400';
             feedbackText.textContent = `The correct answer was ${currentQuestion.answer}. ${currentQuestion.explanation}`;
             
-            // Small health penalty for wrong answer
+            // Health penalty for wrong answer (mental strain)
             const player = GameState.getPlayer();
             GameState.updatePlayer({
-              health: Math.max(1, player.health - 5)
+              health: Math.max(1, player.health - 10)
             });
             UI.updatePlayerStats();
             
-            Utils.addToConsole("> Incorrect answer. -5 health penalty.");
+            Utils.addToConsole("> Incorrect answer. -10 health penalty (mental strain).");
           }
           
           feedback.classList.remove('hidden');
@@ -3849,6 +3815,205 @@
         // Close question modal
         function closeQuestionModal() {
           document.getElementById('question-modal').classList.add('hidden');
+        }
+
+        // Travel Question System
+        function showTravelQuestion(regionId) {
+          if (!questions || questions.length === 0) {
+            // Fallback if questions not loaded
+            travelToRegion(regionId);
+            return;
+          }
+
+          const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+          currentQuestion = randomQuestion;
+          pendingAction = { type: 'travel', regionId: regionId };
+
+          // Show modal
+          const modal = document.getElementById('question-modal');
+          const questionText = document.getElementById('question-text');
+          const optionsContainer = document.getElementById('question-options');
+          const feedback = document.getElementById('question-feedback');
+
+          questionText.textContent = randomQuestion.question;
+          
+          // Clear previous options
+          optionsContainer.innerHTML = '';
+          
+          // Add new options
+          randomQuestion.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.className = 'w-full p-3 text-left bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors';
+            button.textContent = option;
+            button.onclick = () => handleTravelAnswer(index);
+            optionsContainer.appendChild(button);
+          });
+
+          feedback.classList.add('hidden');
+          modal.classList.remove('hidden');
+        }
+
+        function handleTravelAnswer(selectedIndex) {
+          const selectedAnswer = currentQuestion.options[selectedIndex];
+          const feedback = document.getElementById('question-feedback');
+          const feedbackTitle = document.getElementById('feedback-title');
+          const feedbackText = document.getElementById('feedback-text');
+          const skipButton = document.getElementById('skip-to-travel');
+
+          if (selectedAnswer === currentQuestion.answer) {
+            feedbackTitle.textContent = 'Correct!';
+            feedbackTitle.className = 'font-bold mb-2 text-green-400';
+            feedbackText.textContent = `Excellent! ${currentQuestion.explanation}`;
+            
+            // Bonus credits for correct answer
+            const player = GameState.getPlayer();
+            GameState.updatePlayer({
+              credits: player.credits + 25
+            });
+            UI.updatePlayerStats();
+            
+            Utils.addToConsole("> Correct answer! +25 bonus credits awarded.");
+          } else {
+            feedbackTitle.textContent = 'Incorrect';
+            feedbackTitle.className = 'font-bold mb-2 text-red-400';
+            feedbackText.textContent = `The correct answer was ${currentQuestion.answer}. ${currentQuestion.explanation}`;
+            
+            // Health penalty for wrong answer
+            const player = GameState.getPlayer();
+            GameState.updatePlayer({
+              health: Math.max(1, player.health - 10)
+            });
+            UI.updatePlayerStats();
+            
+            Utils.addToConsole("> Incorrect answer. -10 health penalty (mental strain).");
+          }
+          
+          feedback.classList.remove('hidden');
+          
+          // Update skip button text
+          skipButton.textContent = 'Continue to Travel (3s)';
+          
+          // Auto-proceed after 3 seconds
+          setTimeout(() => {
+            document.getElementById('question-modal').classList.add('hidden');
+            travelToRegion(pendingAction.regionId);
+          }, 3000);
+        }
+
+        // Investigation Question System  
+        function showInvestigationQuestion() {
+          if (!questions || questions.length === 0) {
+            // Fallback if questions not loaded
+            performInvestigation();
+            return;
+          }
+
+          const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+          currentQuestion = randomQuestion;
+          pendingAction = { type: 'investigation' };
+
+          // Show modal
+          const modal = document.getElementById('question-modal');
+          const questionText = document.getElementById('question-text');
+          const optionsContainer = document.getElementById('question-options');
+          const feedback = document.getElementById('question-feedback');
+
+          questionText.textContent = randomQuestion.question;
+          
+          // Clear previous options
+          optionsContainer.innerHTML = '';
+          
+          // Add new options
+          randomQuestion.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.className = 'w-full p-3 text-left bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors';
+            button.textContent = option;
+            button.onclick = () => handleInvestigationAnswer(index);
+            optionsContainer.appendChild(button);
+          });
+
+          feedback.classList.add('hidden');
+          modal.classList.remove('hidden');
+        }
+
+        function handleInvestigationAnswer(selectedIndex) {
+          const selectedAnswer = currentQuestion.options[selectedIndex];
+          const feedback = document.getElementById('question-feedback');
+          const feedbackTitle = document.getElementById('feedback-title');
+          const feedbackText = document.getElementById('feedback-text');
+          const skipButton = document.getElementById('skip-to-travel');
+
+          if (selectedAnswer === currentQuestion.answer) {
+            feedbackTitle.textContent = 'Correct!';
+            feedbackTitle.className = 'font-bold mb-2 text-green-400';
+            feedbackText.textContent = `Excellent! ${currentQuestion.explanation}`;
+            
+            // Bonus credits for correct answer
+            const player = GameState.getPlayer();
+            GameState.updatePlayer({
+              credits: player.credits + 25
+            });
+            UI.updatePlayerStats();
+            
+            Utils.addToConsole("> Correct answer! +25 bonus credits awarded.");
+          } else {
+            feedbackTitle.textContent = 'Incorrect';
+            feedbackTitle.className = 'font-bold mb-2 text-red-400';
+            feedbackText.textContent = `The correct answer was ${currentQuestion.answer}. ${currentQuestion.explanation}`;
+            
+            // Health penalty for wrong answer
+            const player = GameState.getPlayer();
+            GameState.updatePlayer({
+              health: Math.max(1, player.health - 10)
+            });
+            UI.updatePlayerStats();
+            
+            Utils.addToConsole("> Incorrect answer. -10 health penalty (mental strain).");
+          }
+          
+          feedback.classList.remove('hidden');
+          
+          // Update skip button text
+          skipButton.textContent = 'Continue to Investigation (3s)';
+          
+          // Auto-proceed after 3 seconds
+          setTimeout(() => {
+            document.getElementById('question-modal').classList.add('hidden');
+            performInvestigation();
+          }, 3000);
+        }
+
+        // Perform the actual investigation
+        function performInvestigation() {
+          const player = GameState.getPlayer();
+          const region = AWSData.getRegionInfo(player.location);
+          
+          // Chance to find clue
+          if (Math.random() > 0.4) {
+            const randomEvent = region.events[Math.floor(Math.random() * region.events.length)];
+            const caseData = GameState.getCase();
+
+            GameState.updateCase({
+              clues: [...caseData.clues, randomEvent],
+              lastCoordinates: region.name,
+            });
+
+            UI.updateCaseFiles();
+
+            // Small chance this is the target region
+            if (!caseData.targetRegion && Math.random() > 0.8) {
+              GameState.updateCase({
+                targetRegion: player.location,
+                currentLead: `Strong evidence points to ${region.name}. Investigate thoroughly!`,
+              });
+
+              Utils.addToConsole(`> CRITICAL CLUE: ${region.name} may hold the key to Dr. ███████'s location!`);
+            } else {
+              Utils.addToConsole(`> Found clue in ${region.name}: ${randomEvent}`);
+            }
+          } else {
+            Utils.addToConsole(`> Investigation in ${region.name} revealed nothing unusual.`);
+          }
         }
 
         // Skip question handler
