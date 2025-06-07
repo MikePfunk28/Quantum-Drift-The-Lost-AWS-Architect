@@ -3156,8 +3156,8 @@
                 }...`
               );
 
-              // Start hacking mini-game after delay
-              setTimeout(() => startHacking(service), 1000);
+              // Start question before hacking mini-game
+              setTimeout(() => showDeploymentQuestion(service), 1000);
               break;
 
             case "scan":
@@ -3660,7 +3660,7 @@
               });
               UI.updatePlayerStats();
 
-              // Start hacking mini-game
+              // Start question before hacking mini-game
               Utils.addToConsole(
                 `> Initiating quantum hack of ${serviceInfo.name}...`
               );
@@ -3669,7 +3669,7 @@
               document.getElementById("terminal-screen").innerHTML = "";
 
               setTimeout(() => {
-                GameLogic.startHacking(service);
+                showDeploymentQuestion(service);
               }, 1000);
             } else {
               Utils.addToConsole(
@@ -3744,6 +3744,122 @@
           document.getElementById("mission-briefing").style.animation =
             "typewriter 4s steps(40) 1s 1 normal both";
         }, 1000);
+
+        // =============================================
+        // QUESTION SYSTEM
+        // =============================================
+        let questionsData = [];
+        let currentQuestion = null;
+        let currentService = null;
+
+        // Load questions from JSON file
+        async function loadQuestions() {
+          try {
+            const response = await fetch('questions.json');
+            questionsData = await response.json();
+          } catch (error) {
+            console.error('Failed to load questions:', error);
+            questionsData = [];
+          }
+        }
+
+        // Show deployment question before hacking
+        function showDeploymentQuestion(service) {
+          currentService = service;
+          
+          if (questionsData.length === 0) {
+            // If no questions loaded, skip to hacking
+            Utils.addToConsole("> Skipping knowledge check - proceeding to deployment...");
+            setTimeout(() => startHacking(service), 500);
+            return;
+          }
+
+          // Get random question
+          currentQuestion = questionsData[Math.floor(Math.random() * questionsData.length)];
+          
+          // Show question modal
+          document.getElementById('question-modal').classList.remove('hidden');
+          
+          // Populate question
+          document.getElementById('question-text').textContent = currentQuestion.question;
+          
+          // Clear previous options
+          const optionsContainer = document.getElementById('question-options');
+          optionsContainer.innerHTML = '';
+          
+          // Add options
+          Object.entries(currentQuestion.options).forEach(([key, value]) => {
+            const button = document.createElement('button');
+            button.className = 'w-full text-left p-3 bg-gray-800 hover:bg-gray-700 rounded border border-gray-600 transition-colors';
+            button.innerHTML = `<strong>${key}:</strong> ${value}`;
+            button.onclick = () => handleQuestionAnswer(key);
+            optionsContainer.appendChild(button);
+          });
+
+          // Hide feedback initially
+          document.getElementById('answer-feedback').classList.add('hidden');
+        }
+
+        // Handle question answer
+        function handleQuestionAnswer(selectedAnswer) {
+          const isCorrect = selectedAnswer === currentQuestion.answer;
+          const feedback = document.getElementById('answer-feedback');
+          const feedbackTitle = feedback.querySelector('h3');
+          const feedbackText = feedback.querySelector('p');
+          
+          if (isCorrect) {
+            feedback.className = 'p-4 rounded mb-6 bg-green-900 border border-green-600';
+            feedbackTitle.textContent = 'Correct!';
+            feedbackTitle.className = 'font-bold mb-2 text-green-400';
+            feedbackText.textContent = currentQuestion.explanation;
+            
+            // Bonus credits for correct answer
+            const player = GameState.getPlayer();
+            GameState.updatePlayer({
+              credits: player.credits + 25
+            });
+            UI.updatePlayerStats();
+            
+            Utils.addToConsole("> Correct answer! +25 bonus credits awarded.");
+          } else {
+            feedback.className = 'p-4 rounded mb-6 bg-red-900 border border-red-600';
+            feedbackTitle.textContent = 'Incorrect';
+            feedbackTitle.className = 'font-bold mb-2 text-red-400';
+            feedbackText.textContent = `The correct answer was ${currentQuestion.answer}. ${currentQuestion.explanation}`;
+            
+            // Small health penalty for wrong answer
+            const player = GameState.getPlayer();
+            GameState.updatePlayer({
+              health: Math.max(1, player.health - 5)
+            });
+            UI.updatePlayerStats();
+            
+            Utils.addToConsole("> Incorrect answer. -5 health penalty.");
+          }
+          
+          feedback.classList.remove('hidden');
+          
+          // Auto-proceed to hacking after showing feedback
+          setTimeout(() => {
+            closeQuestionModal();
+            startHacking(currentService);
+          }, 3000);
+        }
+
+        // Close question modal
+        function closeQuestionModal() {
+          document.getElementById('question-modal').classList.add('hidden');
+        }
+
+        // Skip question handler
+        document.getElementById('skip-question-btn').onclick = () => {
+          Utils.addToConsole("> Knowledge check skipped - proceeding to deployment...");
+          closeQuestionModal();
+          startHacking(currentService);
+        };
+
+        // Load questions when page loads
+        loadQuestions();
       });
     </script>
 
