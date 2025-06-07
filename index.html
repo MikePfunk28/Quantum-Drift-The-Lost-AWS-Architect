@@ -4,11 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quantum Drift: The Lost AWS Architect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <!-- Add Tailwind CSS directly -->
+    <link rel="stylesheet" href="css/main.css" />
+    <script type="module" src="game.js"></script>
     <style>
       @keyframes terminalGlow {
         0% {
@@ -3514,5 +3516,49 @@
         }, 1000);
       });
     </script>
+
+    <!-- AWS Question Modal -->
+    <div
+      id="question-modal"
+      class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 hidden"
+    >
+      <div class="bg-gray-900 p-6 rounded-lg max-w-4xl mx-4 max-h-screen overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+          <h2 class="text-2xl font-bold text-blue-400">AWS Knowledge Check</h2>
+          <div class="text-sm text-gray-400">
+            <i class="fas fa-brain mr-1"></i>
+            Required for investigation
+          </div>
+        </div>
+        
+        <!-- Problem Description (if available) -->
+        <div id="problem-description-container" class="mb-4 p-4 bg-gray-800 rounded border-l-4 border-yellow-500" style="display: none;">
+          <h3 class="text-yellow-400 font-bold mb-2">Scenario:</h3>
+          <p id="problem-description" class="text-gray-300 text-sm"></p>
+        </div>
+
+        <!-- Question -->
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-4 text-white" id="question-text"></h3>
+          <div id="question-options" class="space-y-2"></div>
+        </div>
+
+        <!-- Answer Feedback -->
+        <div id="answer-feedback" class="p-4 rounded mb-6 hidden">
+          <h3 class="font-bold mb-2"></h3>
+          <p class="explanation-text text-sm"></p>
+        </div>
+
+        <!-- Skip Button -->
+        <div class="flex justify-end">
+          <button
+            id="skip-question-btn"
+            class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded text-sm"
+          >
+            Skip Question
+          </button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
