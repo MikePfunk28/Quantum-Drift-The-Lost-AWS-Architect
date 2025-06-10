@@ -1106,7 +1106,7 @@ class QuantumDriftGame {
         this.gameState.phase = 'hacking';
         
         // Hide world view, show hacking view
-        document.getElementById('global-map-view').classList.add('hidden');
+        document.getElementById('global_map-view').classList.add('hidden');
         document.getElementById('fps-view').classList.remove('hidden');
         
         // Start the improved hacking game
@@ -1116,7 +1116,7 @@ class QuantumDriftGame {
     onHackingComplete(success, serviceName) {
         // Return to world view
         document.getElementById('fps-view').classList.add('hidden');
-        document.getElementById('global-map-view').classList.remove('hidden');
+        document.getElementById('global_map-view').classList.remove('hidden');
         
         this.gameState.phase = 'world';
         
