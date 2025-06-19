@@ -212,13 +212,3 @@ This project is open source and available under the MIT License.
 Quantum Drift combines entertainment with education to make learning AWS services engaging and memorable. Whether you're preparing for certification or just want to understand cloud architecture better, this game provides a unique hands-on experience.
 
 **Good luck finding Dr. ███████ and mastering AWS!** 🚀☁️
-
----
-
-## 🌐 Access the Game
-
-The enhanced game is now running and accessible at:
-- **Local**: http://localhost:12000
-- **External**: https://work-1-eyldxomwxpzwinod.prod-runtime.all-hands.dev
-
-All improvements have been implemented and the game is ready to play!
